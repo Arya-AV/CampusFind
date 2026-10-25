@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+campusfind.db
+instance/
+static/uploads/*
+!static/uploads/.gitkeep
+.env
