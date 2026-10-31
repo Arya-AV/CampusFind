@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
-<div class="detail-page">
+<main class="detail-page item-detail" data-item-id="{{ item.id }}">
   <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
   <div class="detail-layout">
     <section class="detail-main">
@@ -22,5 +22,19 @@
       {% else %}<div class="returned-banner">✓ This item has been reunited with its owner.</div>{% endif %}
     </aside>
   </div>
-</div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    (function () {
+      var el = document.querySelector("[data-item-id]");
+      if (!el) return;
+      var id = el.getAttribute("data-item-id");
+      if (id && window.CampusFind && typeof window.CampusFind.recordViewed === "function") {
+        window.CampusFind.recordViewed(id);
+      }
+    })();
+  </script>
 {% endblock %}
