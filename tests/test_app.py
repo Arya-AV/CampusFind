@@ -80,6 +80,17 @@ class CampusFindTests(unittest.TestCase):
         self.assertIn(b"Student ID Card", response.data)
         self.assertIn(b"Wireless Earbuds", response.data)
 
+    def test_empty_search_preserves_category_status_and_sort_filters(self):
+        response = self.client.get("/?q=&category=Bags&status=Lost&sort=oldest")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+        self.assertNotIn(b"Blue Water Bottle", response.data)
+        self.assertNotIn(b"Student ID Card", response.data)
+        self.assertNotIn(b"Wireless Earbuds", response.data)
+        self.assertIn(b'<option value="Bags" selected>', response.data)
+        self.assertIn(b'<option value="Lost" selected>', response.data)
+        self.assertIn(b'<option value="oldest" selected>', response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

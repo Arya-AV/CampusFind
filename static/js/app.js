@@ -3,7 +3,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (search) {
     search.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        event.preventDefault();
         search.value = "";
+        const form = search.form;
+        if (form) {
+          if (typeof form.requestSubmit === "function") {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        }
       }
     });
   }
