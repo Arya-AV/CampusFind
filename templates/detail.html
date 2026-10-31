@@ -2,7 +2,12 @@
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
 <div class="detail-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+  <div class="detail-top-bar">
+    <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+    <button type="button" class="button button-secondary print-button" id="print-item-button" onclick="window.print()" aria-label="Print item details">
+      <span class="print-icon" aria-hidden="true">🖨</span> Print
+    </button>
+  </div>
   <div class="detail-layout">
     <section class="detail-main">
       <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
