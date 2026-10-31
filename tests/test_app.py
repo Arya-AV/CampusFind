@@ -50,6 +50,18 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_homepage_has_recently_viewed_container(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'id="recently-viewed-section"', response.data)
+        self.assertIn(b'id="recently-viewed-list"', response.data)
+
+    def test_detail_page_has_item_tracking_attributes(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'data-item-id="1"', response.data)
+        self.assertIn(b'data-item-title="Black Backpack"', response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
