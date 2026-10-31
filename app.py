@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+import re
 import sqlite3
 import uuid
 
@@ -11,6 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+EMAIL_PATTERN = re.compile(
+    r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+"
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-development-key"
@@ -69,6 +75,16 @@ def init_db():
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def valid_contact_email(email):
+    local_part, separator, domain = email.rpartition("@")
+    return (
+        bool(separator)
+        and len(local_part) <= 64
+        and len(domain) <= 253
+        and EMAIL_PATTERN.fullmatch(email) is not None
+    )
 
 
 @app.context_processor
@@ -147,8 +163,10 @@ def report_item():
             errors.append("Enter a valid item date.")
         if not contact_name or len(contact_name) > 80:
             errors.append("Enter your name (up to 80 characters).")
-        if not contact_email or "@" not in contact_email or len(contact_email) > 120:
-            errors.append("Enter a valid contact email.")
+        if len(contact_email) > 120:
+            errors.append("Contact email must be 120 characters or fewer.")
+        elif not valid_contact_email(contact_email):
+            errors.append("Enter a valid contact email address.")
 
         image_filename = None
         image = request.files.get("image")
