@@ -50,6 +50,47 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_invalid_category_filter_ignored(self):
+        response = self.client.get("/?category=InvalidCategory")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+        self.assertIn(b"Blue Water Bottle", response.data)
+        self.assertIn(b"Student ID Card", response.data)
+        self.assertIn(b"Wireless Earbuds", response.data)
+
+    def test_invalid_status_filter_ignored(self):
+        response = self.client.get("/?status=InvalidStatus")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+        self.assertIn(b"Blue Water Bottle", response.data)
+        self.assertIn(b"Student ID Card", response.data)
+        self.assertIn(b"Wireless Earbuds", response.data)
+
+    def test_invalid_sort_defaults_to_newest(self):
+        response = self.client.get("/?sort=invalid_sort")
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertLess(data.index(b"Blue Water Bottle"), data.index(b"Wireless Earbuds"))
+
+    def test_combined_invalid_filters_ignored(self):
+        response = self.client.get("/?category=InvalidCategory&status=InvalidStatus&sort=invalid_sort")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+        self.assertIn(b"Blue Water Bottle", response.data)
+        self.assertIn(b"Student ID Card", response.data)
+        self.assertIn(b"Wireless Earbuds", response.data)
+
+    def test_empty_search_preserves_category_status_and_sort_filters(self):
+        response = self.client.get("/?q=&category=Bags&status=Lost&sort=oldest")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+        self.assertNotIn(b"Blue Water Bottle", response.data)
+        self.assertNotIn(b"Student ID Card", response.data)
+        self.assertNotIn(b"Wireless Earbuds", response.data)
+        self.assertIn(b'<option value="Bags" selected>', response.data)
+        self.assertIn(b'<option value="Lost" selected>', response.data)
+        self.assertIn(b'<option value="oldest" selected>', response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
