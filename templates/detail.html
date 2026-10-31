@@ -2,7 +2,7 @@
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
 <div class="detail-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+  <a class="back-link" href="{{ url_for('index', **request.args.to_dict()) }}">← Back to listings</a>
   <div class="detail-layout">
     <section class="detail-main">
       <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
@@ -14,6 +14,9 @@
       <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
       <span class="detail-category">{{ item.category }} <span>·</span> Posted {{ item.item_date }}</span>
       <h1>{{ item.title }}</h1>
+      <button class="button button-primary" type="button" onclick="window.print()">
+  🖨 Print Item Details
+</button>
       <div class="detail-info"><span class="info-icon">⌖</span><div><small>LAST SEEN / FOUND AT</small><strong>{{ item.location }}</strong></div></div>
       <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
       {% if item.item_status != 'Returned' %}
