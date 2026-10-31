@@ -24,6 +24,104 @@
   <div class="stat-card"><span class="stat-icon stat-purple">♥</span><div><strong>{{ counts.returned }}</strong><span>Reunited</span></div></div>
 </section>
 
+<!-- Recently Viewed Section (Issue #24) -->
+<section id="recently-viewed-section" class="listings-section" style="display: none; margin-bottom: 2rem;">
+  <div class="section-heading" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem;">
+    <div>
+      <span class="eyebrow">YOUR ACTIVITY</span>
+      <h2>Recently Viewed</h2>
+      <p>Items you have checked out during this visit.</p>
+    </div>
+    <button id="clear-recent-btn" type="button" style="background: none; border: none; font-size: 0.875rem; color: #e53927; cursor: pointer; text-decoration: underline; font-weight: 600;">Clear history</button>
+  </div>
+  <div id="recently-viewed-grid" class="items-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));"></div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var section = document.getElementById('recently-viewed-section');
+    var grid = document.getElementById('recently-viewed-grid');
+    var clearBtn = document.getElementById('clear-recent-btn');
+    if (!section || !grid) return;
+
+    try {
+      var history = JSON.parse(localStorage.getItem('campusfind_recent') || '[]');
+      if (!Array.isArray(history) || history.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      grid.innerHTML = '';
+
+      history.forEach(function(item) {
+        var article = document.createElement('article');
+        article.className = 'item-card';
+
+        var link = document.createElement('a');
+        link.className = 'item-card-link';
+        link.href = '/item/' + encodeURIComponent(item.id);
+
+        var visual = document.createElement('div');
+        visual.className = item.image_filename ? 'item-visual has-image' : 'item-visual visual-0';
+
+        if (item.image_filename) {
+          var img = document.createElement('img');
+          img.src = '/static/uploads/' + encodeURIComponent(item.image_filename);
+          img.alt = item.title || 'Item image';
+          visual.appendChild(img);
+        } else {
+          var sym = document.createElement('span');
+          sym.className = 'placeholder-symbol';
+          sym.textContent = '✦';
+          visual.appendChild(sym);
+        }
+
+        var content = document.createElement('div');
+        content.className = 'item-content';
+
+        var meta = document.createElement('div');
+        meta.className = 'item-meta';
+        var catSpan = document.createElement('span');
+        catSpan.textContent = item.category || 'Listing';
+        meta.appendChild(catSpan);
+
+        var title = document.createElement('h3');
+        title.textContent = item.title || 'Untitled';
+
+        var loc = document.createElement('div');
+        loc.className = 'item-location';
+        loc.innerHTML = '<span>⌖</span> ' + (item.location || 'Campus');
+
+        content.appendChild(meta);
+        content.appendChild(title);
+        content.appendChild(loc);
+
+        link.appendChild(visual);
+        link.appendChild(content);
+
+        var bottom = document.createElement('div');
+        bottom.className = 'item-card-bottom';
+        bottom.innerHTML = '<span class="view-link">View details <span>↗</span></span>';
+
+        article.appendChild(link);
+        article.appendChild(bottom);
+        grid.appendChild(article);
+      });
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+          localStorage.removeItem('campusfind_recent');
+          section.style.display = 'none';
+        });
+      }
+    } catch (e) {
+      console.warn('Error loading recent history', e);
+      section.style.display = 'none';
+    }
+  });
+</script>
+
 <section class="listings-section">
   <div class="section-heading">
     <div><span class="eyebrow">COMMUNITY BOARD</span><h2>Explore listings <span class="heading-count">{{ items|length }}</span></h2><p>Every listing is a chance to reunite someone with what they lost.</p></div>
