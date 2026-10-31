@@ -28,4 +28,30 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Live character counters for report form
+  const initCharCounter = (inputSelector, counterSelector, maxLength) => {
+    const field = document.querySelector(inputSelector);
+    const counter = document.querySelector(counterSelector);
+
+    if (field && counter) {
+      const update = () => {
+        const currentLength = field.value ? field.value.length : 0;
+        counter.textContent = `${currentLength} / ${maxLength}`;
+        if (currentLength >= maxLength) {
+          counter.classList.add("limit-reached");
+        } else {
+          counter.classList.remove("limit-reached");
+        }
+      };
+
+      field.addEventListener("input", update);
+      field.addEventListener("keyup", update);
+      field.addEventListener("change", update);
+      update();
+    }
+  };
+
+  initCharCounter('input[name="title"]', '#title-counter', 100);
+  initCharCounter('textarea[name="description"]', '#description-counter', 1000);
 });

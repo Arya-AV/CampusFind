@@ -50,6 +50,14 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_report_form_character_counters(self):
+        response = self.client.get("/report")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"title-counter", response.data)
+        self.assertIn(b"description-counter", response.data)
+        self.assertIn(b"0 / 100", response.data)
+        self.assertIn(b"0 / 1000", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
