@@ -164,18 +164,28 @@ def report_item():
                 flash(error, "error")
             return render_template("report.html", form=request.form, today=date.today().isoformat())
 
+        saved_file_path = None
         if image_filename:
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+            saved_file_path = UPLOAD_DIR / image_filename
+            image.save(saved_file_path)
 
-        with get_db() as conn:
-            cursor = conn.execute("""
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
                 INSERT INTO items (title, category, item_status, description, location, item_date,
                                    contact_name, contact_email, image_filename)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (title, category, item_status, description, location, item_date,
                   contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
+                item_id = cursor.lastrowid
+        except Exception:
+            if saved_file_path and saved_file_path.exists():
+                try:
+                    saved_file_path.unlink()
+                except OSError:
+                    pass
+            raise
         flash("Your item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
 
