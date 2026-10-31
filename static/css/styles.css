@@ -3,6 +3,7 @@
 @media(max-width:900px){.hero-copy{padding-left:35px}.hero h1{font-size:40px}.items-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-panel{gap:9px}.search-box{flex-basis:100%}.select-wrap{flex:1}.hero-art .art-card-main{left:3%}.hero-art .art-card-float{right:2%}.stats-grid{gap:10px}.stat-card{padding:13px;gap:9px}.stat-icon{width:36px;height:36px}.detail-layout{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.site-header{height:70px}.nav-wrap,.main-shell,.footer-inner{width:calc(100% - 28px)}.brand{font-size:17px}.brand-mark{width:35px;height:35px}.site-header nav{gap:12px}.nav-link{display:none}.nav-cta{font-size:11px;padding:9px 10px}.hero{grid-template-columns:1fr;margin-top:16px}.hero-copy{padding:32px 25px 12px}.hero h1{font-size:39px}.hero-art{min-height:220px}.art-card-main{top:40px!important;left:7%!important}.art-card-float{top:120px!important;right:4%!important}.art-sticker{top:15px;right:7%;font-size:8px}.orbit{top:-42px}.orbit-two{top:-4px}.stats-grid{grid-template-columns:1fr 1fr;margin:14px 0 35px}.stat-card{min-height:75px}.section-heading h2{font-size:23px}.section-heading p{max-width:290px}.filter-panel{padding:10px}.select-wrap{flex-basis:calc(50% - 6px);min-width:0}.filter-submit{flex:1}.items-grid{grid-template-columns:1fr;gap:14px}.item-visual{height:190px}.form-page,.detail-page{margin-top:20px}.form-intro h1{font-size:32px}.report-form{padding:22px 17px}.form-grid{grid-template-columns:1fr}.field-full{grid-column:auto}.form-actions{gap:13px}.detail-layout{grid-template-columns:1fr}.detail-visual{height:250px}.detail-sidebar{padding:21px}.footer-inner{min-height:62px;font-size:9px;gap:12px}.footer-inner span:last-child{text-align:right}}
 
+
 /* Print Details Button */
 .button-print {
     width: 100%;
@@ -24,12 +25,9 @@
 
 /* Print Layout */
 @media print {
-
-    /* Hide interactive and navigation elements */
     .no-print,
-    nav,
-    footer,
-    header {
+    .site-header,
+    .site-footer {
         display: none !important;
     }
 
@@ -38,8 +36,14 @@
         color: black !important;
     }
 
+    .main-shell {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
     .detail-page {
         width: 100%;
+        max-width: 100%;
         margin: 0;
         padding: 0;
     }
@@ -55,6 +59,7 @@
         box-shadow: none;
         border: none;
         padding: 10px 0;
+        overflow: visible;
     }
 
     .detail-visual img {
