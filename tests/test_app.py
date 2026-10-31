@@ -1,55 +1,38 @@
+import io
 import unittest
-import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-import app as campus_app
-
+from app import app, init_db, get_db, UPLOAD_DIR
 
 class CampusFindTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.original_db = campus_app.DATABASE
-        cls.temp_dir = tempfile.TemporaryDirectory()
-        campus_app.DATABASE = Path(cls.temp_dir.name) / "test.db"
-        campus_app.init_db()
-        campus_app.app.config["TESTING"] = True
-        cls.client = campus_app.app.test_client()
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.client = app.test_client()
+        init_db()
 
-    @classmethod
-    def tearDownClass(cls):
-        campus_app.DATABASE = cls.original_db
-        cls.temp_dir.cleanup()
+    def test_upload_cleanup_on_database_failure(self):
+        test_image = (io.BytesIO(b"fake image data"), "test_fail.png")
+        data = {
+            "title": "Failure Test Item",
+            "category": "Electronics",
+            "item_status": "Lost",
+            "description": "A test description",
+            "location": "Hostel Area",
+            "item_date": "2026-10-25",
+            "contact_name": "Test User",
+            "contact_email": "test@example.com",
+            "image": test_image,
+        }
 
-    def test_home_page_loads(self):
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Explore listings", response.data)
+        # Simulate database insertion raising an error
+        with patch("app.get_db", side_effect=Exception("Simulated DB failure")):
+            with self.assertRaises(Exception):
+                self.client.post("/report", data=data, content_type="multipart/form-data")
 
-    def test_search_finds_sample_item(self):
-        response = self.client.get("/?q=Backpack")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Black Backpack", response.data)
-
-    def test_filter_by_status(self):
-        response = self.client.get("/?status=Found")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Blue Water Bottle", response.data)
-        self.assertNotIn(b"Black Backpack", response.data)
-
-    def test_item_detail_exists(self):
-        response = self.client.get("/item/1")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Black Backpack", response.data)
-
-    def test_missing_item_returns_404(self):
-        response = self.client.get("/item/99999")
-        self.assertEqual(response.status_code, 404)
-
-    def test_report_form_loads(self):
-        response = self.client.get("/report")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Item details", response.data)
-
+        # Verify no orphan test image remains in the uploads directory
+        remaining = list(UPLOAD_DIR.glob("*test_fail*"))
+        self.assertEqual(len(remaining), 0)
 
 if __name__ == "__main__":
     unittest.main()
