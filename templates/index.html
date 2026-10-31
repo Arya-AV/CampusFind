@@ -6,7 +6,11 @@
     <span class="eyebrow"><span class="eyebrow-dot"></span> YOUR CAMPUS COMMUNITY</span>
     <h1>Lost something?<br><span>Let's find it.</span></h1>
     <p>One small campus. A hundred helpful people. Find lost belongings or help something make its way home.</p>
-    <a href="{{ url_for('report_item') }}" class="button button-primary hero-button">＋ Report lost or found item</a>
+    {% if current_user %}
+      <a href="{{ url_for('report_item') }}" class="button button-primary hero-button">＋ Report lost or found item</a>
+    {% else %}
+      <button type="button" class="button button-primary hero-button open-auth-btn" data-auth-mode="signup" data-auth-next="{{ url_for('report_item') }}">＋ Report lost or found item</button>
+    {% endif %}
   </div>
   <div class="hero-art" aria-hidden="true">
     <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
@@ -26,28 +30,45 @@
 
 <section class="listings-section">
   <div class="section-heading">
-    <div><span class="eyebrow">COMMUNITY BOARD</span><h2>Explore listings <span class="heading-count">{{ items|length }}</span></h2><p>Every listing is a chance to reunite someone with what they lost.</p></div>
+    <div>
+      <span class="eyebrow">COMMUNITY BOARD</span>
+      <h2>Explore listings <span class="heading-count">{{ items|length }}</span></h2>
+      <p>Every listing is a chance to reunite someone with what they lost.</p>
+    </div>
+    {% if current_user %}
+    <div class="board-tabs">
+      <a class="board-tab {% if not only_mine %}active{% endif %}" href="{{ url_for('index', q=q, category=selected_category, status=selected_status, sort=sort) }}">All listings</a>
+      <a class="board-tab {% if only_mine %}active{% endif %}" href="{{ url_for('index', mine=1, q=q, category=selected_category, status=selected_status, sort=sort) }}">My listings ({{ my_count }})</a>
+    </div>
+    {% endif %}
   </div>
+
   <form class="filter-panel" method="get" action="{{ url_for('index') }}">
+    {% if only_mine %}<input type="hidden" name="mine" value="1">{% endif %}
     <label class="search-box"><span>⌕</span><input type="search" name="q" value="{{ q }}" placeholder="Search items, places, descriptions..." aria-label="Search listings"></label>
     <label class="select-wrap"><span class="filter-label">CATEGORY</span><select name="category"><option value="">All categories</option>{% for cat in categories %}<option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>{% endfor %}</select></label>
     <label class="select-wrap"><span class="filter-label">STATUS</span><select name="status"><option value="">All statuses</option>{% for s in statuses %}<option value="{{ s }}" {% if selected_status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
     <label class="select-wrap sort-select"><span class="filter-label">SORT BY</span><select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest first</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest first</option></select></label>
     <button class="button button-dark filter-submit" type="submit">Search</button>
-    {% if q or selected_category or selected_status or sort == 'oldest' %}<a class="clear-filters" href="{{ url_for('index') }}">Clear</a>{% endif %}
+    {% if q or selected_category or selected_status or sort == 'oldest' or only_mine %}<a class="clear-filters" href="{{ url_for('index') }}">Clear</a>{% endif %}
   </form>
 
   {% if items %}
   <div class="items-grid">
     {% for item in items %}
-    <article class="item-card">
+    <article class="item-card {% if current_user and item.user_id == current_user.id %}item-card-own{% endif %}">
       <a class="item-card-link" href="{{ url_for('item_detail', item_id=item.id) }}" aria-label="View {{ item.title }}">
         <div class="item-visual {% if item.image_filename %}has-image{% else %}visual-{{ loop.index0 % 5 }}{% endif %}">
           {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}
             <span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span>
             <span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% elif item.category == 'Keys' %}⚿{% else %}✦{% endif %}</span>
           {% endif %}
-          <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
+          <div class="pill-group">
+            <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
+            {% if current_user and item.user_id == current_user.id %}
+              <span class="owner-pill">Your report</span>
+            {% endif %}
+          </div>
         </div>
         <div class="item-content">
           <div class="item-meta"><span>{{ item.category }}</span><span>·</span><span>{{ item.item_date }}</span></div>
@@ -55,12 +76,27 @@
           <div class="item-location"><span>⌖</span>{{ item.location }}</div>
         </div>
       </a>
-      <div class="item-card-bottom"><span class="avatar">{{ item.contact_name[:1]|upper }}</span><span class="contact-name">{{ item.contact_name }}</span><a href="{{ url_for('item_detail', item_id=item.id) }}" class="view-link">Details <span>↗</span></a></div>
+      <div class="item-card-bottom">
+        <span class="avatar">{{ item.contact_name[:1]|upper }}</span>
+        <span class="contact-name">{{ item.contact_name }}</span>
+        <a href="{{ url_for('item_detail', item_id=item.id) }}" class="view-link">Details <span>↗</span></a>
+      </div>
     </article>
     {% endfor %}
   </div>
   {% else %}
-  <div class="empty-state"><div class="empty-icon">⌕</div><h3>No listings found</h3><p>Try another search or clear your filters to see all campus listings.</p><a class="button button-primary" href="{{ url_for('index') }}">View all listings</a></div>
+  <div class="empty-state">
+    <div class="empty-icon">⌕</div>
+    {% if only_mine %}
+      <h3>You have no listings yet</h3>
+      <p>Have you lost an item or found someone's belonging? Report it to help the campus community.</p>
+      <a class="button button-primary" href="{{ url_for('report_item') }}">＋ Report an item</a>
+    {% else %}
+      <h3>No listings found</h3>
+      <p>Try another search or clear your filters to see all campus listings.</p>
+      <a class="button button-primary" href="{{ url_for('index') }}">View all listings</a>
+    {% endif %}
+  </div>
   {% endif %}
 </section>
 {% endblock %}
