@@ -3,7 +3,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 
@@ -77,42 +77,102 @@ def inject_globals():
 
 
 @app.route("/")
+
+@app.route("/")
 def index():
     search = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
     status = request.args.get("status", "").strip()
     sort = request.args.get("sort", "newest")
+
     query = "SELECT * FROM items WHERE 1=1"
     params = []
+
     if search:
         query += " AND (title LIKE ? OR description LIKE ? OR location LIKE ?)"
         term = f"%{search}%"
         params.extend([term, term, term])
+
     if category in CATEGORIES:
         query += " AND category = ?"
         params.append(category)
+
     if status in STATUSES:
         query += " AND item_status = ?"
         params.append(status)
-    query += " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
+
+    query += " ORDER BY item_date " + (
+        "ASC" if sort == "oldest" else "DESC"
+    ) + ", id DESC"
+
     with get_db() as conn:
         items = conn.execute(query, params).fetchall()
+
+        recent_ids = session.get("recently_viewed", [])
+        recent_items = []
+
+        if recent_ids:
+            placeholders = ",".join("?" for _ in recent_ids)
+
+            recent_rows = conn.execute(
+                f"SELECT * FROM items WHERE id IN ({placeholders})",
+                recent_ids
+            ).fetchall()
+
+            recent_by_id = {item["id"]: item for item in recent_rows}
+
+            recent_items = [
+                recent_by_id[item_id]
+                for item_id in recent_ids
+                if item_id in recent_by_id
+            ]
+
         counts = {
-            "all": conn.execute("SELECT COUNT(*) FROM items").fetchone()[0],
-            "lost": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Lost'").fetchone()[0],
-            "found": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Found'").fetchone()[0],
-            "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
+            "all": conn.execute(
+                "SELECT COUNT(*) FROM items"
+            ).fetchone()[0],
+            "lost": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Lost'"
+            ).fetchone()[0],
+            "found": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Found'"
+            ).fetchone()[0],
+            "returned": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Returned'"
+            ).fetchone()[0],
         }
-    return render_template("index.html", items=items, counts=counts, q=search,
-                           selected_category=category, selected_status=status, sort=sort)
+
+    return render_template(
+        "index.html",
+        items=items,
+        counts=counts,
+        q=search,
+        selected_category=category,
+        selected_status=status,
+        sort=sort,
+        recent_items=recent_items
+    )
 
 
 @app.route("/item/<int:item_id>")
 def item_detail(item_id):
     with get_db() as conn:
-        item = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+        item = conn.execute(
+            "SELECT * FROM items WHERE id = ?", (item_id,)
+        ).fetchone()
+
     if item is None:
         abort(404)
+
+    recent_ids = session.get("recently_viewed", [])
+
+    if item_id in recent_ids:
+        recent_ids.remove(item_id)
+
+    recent_ids.insert(0, item_id)
+
+    session["recently_viewed"] = recent_ids[:5]
+
     return render_template("detail.html", item=item)
 
 
