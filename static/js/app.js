@@ -28,4 +28,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const inputsWithCounter = document.querySelectorAll("input[maxlength], textarea[maxlength]");
+  inputsWithCounter.forEach((input) => {
+    const max = input.getAttribute("maxlength");
+    if (!max) return;
+    const counter = document.getElementById(`${input.name}-counter`);
+    if (counter) {
+      const update = () => {
+        counter.textContent = `${input.value.length} / ${max}`;
+      };
+      input.addEventListener("input", update);
+      update();
+    }
+  });
+      }
+    });
+  }
 });
