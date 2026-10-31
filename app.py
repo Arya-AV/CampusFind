@@ -151,6 +151,7 @@ def report_item():
             errors.append("Enter a valid contact email.")
 
         image_filename = None
+        saved_file_path = None
         image = request.files.get("image")
         if image and image.filename:
             if not allowed_file(image.filename):
@@ -166,16 +167,27 @@ def report_item():
 
         if image_filename:
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+            saved_file_path = UPLOAD_DIR / image_filename
+            image.save(saved_file_path)
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename))
+                item_id = cursor.lastrowid
+        except Exception:
+            # Clean up uploaded file if database insertion or transaction fails
+            if saved_file_path and saved_file_path.exists():
+                try:
+                    saved_file_path.unlink()
+                except OSError:
+                    pass
+            raise
+
         flash("Your item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
 
