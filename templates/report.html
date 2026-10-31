@@ -1,26 +1,78 @@
 {% extends "base.html" %}
 {% block title %}Report an item{% endblock %}
 {% block content %}
-<div class="form-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
-  <div class="form-intro"><span class="eyebrow">HELP YOUR COMMUNITY</span><h1>Report an item</h1><p>Whether you've lost something or found a belonging, sharing the details can make someone's day.</p></div>
-  <form class="report-form" method="post" enctype="multipart/form-data">
-    <div class="form-section-title"><span class="form-step">01</span><div><h2>Item details</h2><p>Tell us a little about the item.</p></div></div>
-    <div class="form-grid">
-      <label class="field field-full"><span>Item name <b>*</b></span><input name="title" maxlength="100" required placeholder="e.g. Black laptop sleeve" value="{{ form.get('title', '') }}"></label>
-      <label class="field"><span>Report type <b>*</b></span><select name="item_status" required><option value="">Choose one</option><option value="Lost" {% if form.get('item_status') == 'Lost' %}selected{% endif %}>I've lost this</option><option value="Found" {% if form.get('item_status') == 'Found' %}selected{% endif %}>I've found this</option></select></label>
-      <label class="field"><span>Category <b>*</b></span><select name="category" required><option value="">Choose category</option>{% for cat in categories %}<option value="{{ cat }}" {% if form.get('category') == cat %}selected{% endif %}>{{ cat }}</option>{% endfor %}</select></label>
-      <label class="field"><span>Where? <b>*</b></span><input name="location" maxlength="120" required placeholder="e.g. Main library, 2nd floor" value="{{ form.get('location', '') }}"></label>
-      <label class="field"><span>Date lost or found <b>*</b></span><input type="date" name="item_date" max="{{ today }}" required value="{{ form.get('item_date', today) }}"></label>
-      <label class="field field-full"><span>Description <b>*</b></span><textarea name="description" maxlength="1000" rows="4" required placeholder="Add identifying details, colour, brand, or other clues...">{{ form.get('description', '') }}</textarea><small>Don't include private information printed on IDs or cards.</small></label>
-      <label class="field field-full"><span>Photo <em>OPTIONAL</em></span><input type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp"><small>PNG, JPG, GIF or WEBP · Max 5 MB</small></label>
+<div class="form-shell">
+  <div class="form-header">
+    <span class="eyebrow">ADD A LISTING</span>
+    <h1>Report a lost or found item</h1>
+    <p>Fill in as much detail as possible so the item can be identified quickly.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="listing-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="item_status">Status <span class="required">*</span></label>
+      <select id="item_status" name="item_status" required>
+        <option value="Lost" {% if form.get('item_status') == 'Lost' %}selected{% endif %}>I lost an item</option>
+        <option value="Found" {% if form.get('item_status') == 'Found' %}selected{% endif %}>I found an item</option>
+      </select>
     </div>
-    <div class="form-section-title contact-section"><span class="form-step">02</span><div><h2>Your contact details</h2><p>So a finder or owner can reach you.</p></div></div>
-    <div class="form-grid">
-      <label class="field"><span>Your name <b>*</b></span><input name="contact_name" maxlength="80" required placeholder="Your name" value="{{ form.get('contact_name', '') }}"></label>
-      <label class="field"><span>Email address <b>*</b></span><input type="email" name="contact_email" maxlength="120" required placeholder="you@example.com" value="{{ form.get('contact_email', '') }}"></label>
+
+    <div class="form-group">
+      <label for="title">Item name <span class="required">*</span></label>
+      <input type="text" id="title" name="title" maxlength="100" placeholder="e.g. Blue Hydroflask bottle" value="{{ form.get('title', '') }}" required>
     </div>
-    <div class="form-actions"><a href="{{ url_for('index') }}" class="cancel-link">Cancel</a><button type="submit" class="button button-primary">Publish listing <span>↗</span></button></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="category">Category <span class="required">*</span></label>
+        <select id="category" name="category" required>
+          <option value="">Select a category</option>
+          {% for cat in categories %}
+          <option value="{{ cat }}" {% if form.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="item_date">Date lost / found <span class="required">*</span></label>
+        <input type="date" id="item_date" name="item_date" max="{{ today }}" value="{{ form.get('item_date', today) }}" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="location">Location <span class="required">*</span></label>
+      <input type="text" id="location" name="location" maxlength="120" placeholder="e.g. Computer Science Lab 3, 2nd floor" value="{{ form.get('location', '') }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="description">Description <span class="required">*</span></label>
+      <textarea id="description" name="description" rows="4" maxlength="1000" placeholder="Add distinctive features, stickers, brand names or serial numbers..." required>{{ form.get('description', '') }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="image">Optional photo</label>
+      <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.gif,.webp">
+      <small class="help-text">Accepted formats: PNG, JPG, JPEG, GIF, WEBP (Max 5MB)</small>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="contact_name">Your name <span class="required">*</span></label>
+        <input type="text" id="contact_name" name="contact_name" maxlength="80" placeholder="e.g. Rahul Verma" value="{{ form.get('contact_name', '') }}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="contact_email">Your email <span class="required">*</span></label>
+        <input type="email" id="contact_email" name="contact_email" maxlength="120" placeholder="e.g. rahul@example.com" value="{{ form.get('contact_email', '') }}" required>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('index') }}" class="button button-outline">Cancel</a>
+      <button type="submit" class="button button-primary">Submit listing</button>
+    </div>
   </form>
 </div>
 {% endblock %}

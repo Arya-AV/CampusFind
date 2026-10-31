@@ -2,8 +2,9 @@ from datetime import date
 from pathlib import Path
 import sqlite3
 import uuid
+import secrets
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, url_for, session
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 
@@ -19,6 +20,22 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 CATEGORIES = ["Electronics", "ID Cards", "Bags", "Books", "Clothing", "Keys", "Accessories", "Other"]
 STATUSES = ["Lost", "Found", "Returned"]
+
+
+def generate_csrf_token():
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = secrets.token_hex(16)
+    return session["_csrf_token"]
+
+
+@app.before_request
+def check_csrf():
+    if app.config.get("TESTING") and not app.config.get("ENABLE_CSRF_TESTS"):
+        return
+    if request.method == "POST":
+        token = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+        if not token or token != session.get("_csrf_token"):
+            abort(400)
 
 
 @contextmanager
@@ -73,7 +90,12 @@ def allowed_file(filename):
 
 @app.context_processor
 def inject_globals():
-    return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year}
+    return {
+        "categories": CATEGORIES,
+        "statuses": STATUSES,
+        "current_year": date.today().year,
+        "csrf_token": generate_csrf_token,
+    }
 
 
 @app.route("/")
@@ -151,6 +173,7 @@ def report_item():
             errors.append("Enter a valid contact email.")
 
         image_filename = None
+        saved_file_path = None
         image = request.files.get("image")
         if image and image.filename:
             if not allowed_file(image.filename):
@@ -166,16 +189,26 @@ def report_item():
 
         if image_filename:
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+            saved_file_path = UPLOAD_DIR / image_filename
+            image.save(saved_file_path)
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename))
+                item_id = cursor.lastrowid
+        except Exception:
+            if saved_file_path and saved_file_path.exists():
+                try:
+                    saved_file_path.unlink()
+                except OSError:
+                    pass
+            raise
+
         flash("Your item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
 
@@ -192,6 +225,11 @@ def mark_returned(item_id):
             conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
     flash("Item marked as returned. Great news!", "success")
     return redirect(url_for("item_detail", item_id=item_id))
+
+
+@app.errorhandler(400)
+def bad_request(_error):
+    return "Bad Request: CSRF token missing or invalid", 400
 
 
 @app.errorhandler(404)
