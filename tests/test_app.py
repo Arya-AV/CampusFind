@@ -1,6 +1,7 @@
 import unittest
 import tempfile
 from pathlib import Path
+from datetime import date, timedelta
 
 import app as campus_app
 
@@ -49,6 +50,49 @@ class CampusFindTests(unittest.TestCase):
         response = self.client.get("/report")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
+
+    def test_report_item_rejects_future_date(self):
+        future_date = (date.today() + timedelta(days=2)).isoformat()
+        with campus_app.get_db() as conn:
+            initial_count = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+
+        response = self.client.post("/report", data={
+            "title": "Future Item",
+            "category": "Books",
+            "item_status": "Lost",
+            "description": "Lost book from the future",
+            "location": "Library",
+            "item_date": future_date,
+            "contact_name": "Time Traveler",
+            "contact_email": "traveler@example.com"
+        }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"The item date cannot be in the future.", response.data)
+
+        with campus_app.get_db() as conn:
+            final_count = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+            future_item = conn.execute("SELECT * FROM items WHERE title = 'Future Item'").fetchone()
+
+        self.assertEqual(initial_count, final_count)
+        self.assertIsNone(future_item)
+
+    def test_report_item_accepts_valid_current_and_past_date(self):
+        valid_date = date.today().isoformat()
+        response = self.client.post("/report", data={
+            "title": "Today Notebook",
+            "category": "Books",
+            "item_status": "Found",
+            "description": "Spiral notebook found today",
+            "location": "Seminar Hall",
+            "item_date": valid_date,
+            "contact_name": "Student B",
+            "contact_email": "student_b@example.com"
+        }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Your item has been reported successfully.", response.data)
+        self.assertIn(b"Today Notebook", response.data)
 
 
 if __name__ == "__main__":
