@@ -50,6 +50,18 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_item_detail_has_copy_email_button(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"copy-email-btn", response.data)
+        self.assertIn(b"Copy email", response.data)
+        self.assertIn(b'data-email="riya@example.com"', response.data)
+
+        # Test another item record to verify it uses that item's email
+        response2 = self.client.get("/item/2")
+        self.assertEqual(response2.status_code, 200)
+        self.assertIn(b'data-email="aman@example.com"', response2.data)
+
 
 if __name__ == "__main__":
     unittest.main()

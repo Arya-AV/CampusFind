@@ -15,7 +15,20 @@
       <span class="detail-category">{{ item.category }} <span>·</span> Posted {{ item.item_date }}</span>
       <h1>{{ item.title }}</h1>
       <div class="detail-info"><span class="info-icon">⌖</span><div><small>LAST SEEN / FOUND AT</small><strong>{{ item.location }}</strong></div></div>
-      <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
+      <div class="detail-info">
+        <span class="info-icon">♙</span>
+        <div>
+          <small>CONTACT PERSON</small>
+          <strong>{{ item.contact_name }}</strong>
+          <div class="contact-email-row">
+            <a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a>
+            <button type="button" class="copy-email-btn" data-email="{{ item.contact_email }}" aria-label="Copy email address" title="Copy email address">
+              <span class="copy-icon" aria-hidden="true">📋</span>
+              <span class="copy-text">Copy email</span>
+            </button>
+          </div>
+        </div>
+      </div>
       {% if item.item_status != 'Returned' %}
       <div class="detail-note"><strong>Is this your item?</strong><p>Reach out to the contact person to coordinate a safe return.</p></div>
       {% if item.item_status == 'Found' %}<form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned?')"><button class="button button-primary button-wide" type="submit">✓ Mark as returned</button></form>{% else %}<div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>{% endif %}
