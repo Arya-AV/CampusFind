@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+import os
 import sqlite3
 import uuid
 
@@ -13,7 +14,7 @@ UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-development-key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-development-key")
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
@@ -208,4 +209,5 @@ def too_large(_error):
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    app.run(debug=debug_mode)

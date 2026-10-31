@@ -46,6 +46,13 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Configuration and environment variables
+
+CampusFind supports the following environment variables:
+
+- `SECRET_KEY`: Secret key used for signing session cookies. Defaults to a development fallback (`change-this-development-key`) if unset.
+- `FLASK_DEBUG`: Set to `1`, `true`, or `yes` to enable debug mode when running `python app.py`. Disabled by default.
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
