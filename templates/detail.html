@@ -23,4 +23,41 @@
     </aside>
   </div>
 </div>
+
+<!-- Hidden data container to safely pass server-side Jinja variables into JS without linter errors -->
+<div id="recent-item-data" 
+     data-id="{{ item.id }}" 
+     data-title="{{ item.title }}" 
+     data-category="{{ item.category }}" 
+     data-location="{{ item.location }}" 
+     data-image="{{ item.image_filename or '' }}" 
+     style="display:none;"></div>
+
+<script>
+  (function() {
+    try {
+      const el = document.getElementById('recent-item-data');
+      if (!el) return;
+      const itemData = {
+        id: parseInt(el.dataset.id, 10),
+        title: el.dataset.title,
+        category: el.dataset.category,
+        location: el.dataset.location,
+        image_filename: el.dataset.image
+      };
+      
+      let history = JSON.parse(localStorage.getItem('campusfind_recent') || '[]');
+      history = history.filter(function(item) {
+        return item.id !== itemData.id;
+      });
+      history.unshift(itemData);
+      if (history.length > 4) {
+        history = history.slice(0, 4);
+      }
+      localStorage.setItem('campusfind_recent', JSON.stringify(history));
+    } catch (e) {
+      console.warn('Could not save recently viewed item', e);
+    }
+  })();
+</script>
 {% endblock %}
