@@ -11,6 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+LISTINGS_PER_PAGE = 9
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-development-key"
@@ -82,29 +83,55 @@ def index():
     category = request.args.get("category", "").strip()
     status = request.args.get("status", "").strip()
     sort = request.args.get("sort", "newest")
-    query = "SELECT * FROM items WHERE 1=1"
+    try:
+        requested_page = max(1, int(request.args.get("page", "1")))
+    except (TypeError, ValueError):
+        requested_page = 1
+
+    filters = []
     params = []
     if search:
-        query += " AND (title LIKE ? OR description LIKE ? OR location LIKE ?)"
+        filters.append("(title LIKE ? OR description LIKE ? OR location LIKE ?)")
         term = f"%{search}%"
         params.extend([term, term, term])
     if category in CATEGORIES:
-        query += " AND category = ?"
+        filters.append("category = ?")
         params.append(category)
     if status in STATUSES:
-        query += " AND item_status = ?"
+        filters.append("item_status = ?")
         params.append(status)
-    query += " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
+    where_clause = " AND ".join(filters) if filters else "1=1"
+    order = "ASC" if sort == "oldest" else "DESC"
     with get_db() as conn:
-        items = conn.execute(query, params).fetchall()
+        total_items = conn.execute(
+            f"SELECT COUNT(*) FROM items WHERE {where_clause}", params
+        ).fetchone()[0]
+        total_pages = max(1, (total_items + LISTINGS_PER_PAGE - 1) // LISTINGS_PER_PAGE)
+        page = min(requested_page, total_pages)
+        offset = (page - 1) * LISTINGS_PER_PAGE
+        items = conn.execute(
+            f"SELECT * FROM items WHERE {where_clause} "
+            f"ORDER BY item_date {order}, id DESC LIMIT ? OFFSET ?",
+            [*params, LISTINGS_PER_PAGE, offset],
+        ).fetchall()
         counts = {
             "all": conn.execute("SELECT COUNT(*) FROM items").fetchone()[0],
             "lost": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Lost'").fetchone()[0],
             "found": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Found'").fetchone()[0],
             "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
         }
-    return render_template("index.html", items=items, counts=counts, q=search,
-                           selected_category=category, selected_status=status, sort=sort)
+    return render_template(
+        "index.html",
+        items=items,
+        counts=counts,
+        q=search,
+        selected_category=category,
+        selected_status=status,
+        sort=sort,
+        page=page,
+        total_pages=total_pages,
+        total_items=total_items,
+    )
 
 
 @app.route("/item/<int:item_id>")
