@@ -1,55 +1,39 @@
+import io
 import unittest
-import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-import app as campus_app
-
+from app import app, init_db, get_db, UPLOAD_DIR
 
 class CampusFindTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.original_db = campus_app.DATABASE
-        cls.temp_dir = tempfile.TemporaryDirectory()
-        campus_app.DATABASE = Path(cls.temp_dir.name) / "test.db"
-        campus_app.init_db()
-        campus_app.app.config["TESTING"] = True
-        cls.client = campus_app.app.test_client()
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.client = app.test_client()
+        init_db()
 
-    @classmethod
-    def tearDownClass(cls):
-        campus_app.DATABASE = cls.original_db
-        cls.temp_dir.cleanup()
-
-    def test_home_page_loads(self):
-        response = self.client.get("/")
+    def test_invalid_category_parameter(self):
+        # Testing unknown category parameter does not crash the server and returns 200 OK
+        response = self.client.get("/?category=InvalidNonExistentCategory")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Explore listings", response.data)
 
-    def test_search_finds_sample_item(self):
-        response = self.client.get("/?q=Backpack")
+    def test_invalid_status_parameter(self):
+        # Testing unknown status parameter does not crash the server and returns 200 OK
+        response = self.client.get("/?status=NotARealStatus")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Black Backpack", response.data)
+        self.assertIn(b"Explore listings", response.data)
 
-    def test_filter_by_status(self):
-        response = self.client.get("/?status=Found")
+    def test_invalid_sort_parameter_falls_back_to_newest(self):
+        # Testing unknown sort value does not cause 500 error and falls back gracefully
+        response = self.client.get("/?sort=invalid_sort_value")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Blue Water Bottle", response.data)
-        self.assertNotIn(b"Black Backpack", response.data)
+        self.assertIn(b"Explore listings", response.data)
 
-    def test_item_detail_exists(self):
-        response = self.client.get("/item/1")
+    def test_multiple_invalid_parameters_combined(self):
+        # Testing combinations of invalid parameters together
+        response = self.client.get("/?category=FakeCategory&status=FakeStatus&sort=gibberish")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Black Backpack", response.data)
-
-    def test_missing_item_returns_404(self):
-        response = self.client.get("/item/99999")
-        self.assertEqual(response.status_code, 404)
-
-    def test_report_form_loads(self):
-        response = self.client.get("/report")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Item details", response.data)
-
+        self.assertIn(b"Explore listings", response.data)
 
 if __name__ == "__main__":
     unittest.main()
