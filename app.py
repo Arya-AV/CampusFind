@@ -188,6 +188,9 @@ def mark_returned(item_id):
         item = conn.execute("SELECT id, item_status FROM items WHERE id = ?", (item_id,)).fetchone()
         if item is None:
             abort(404)
+        if item["item_status"] == "Lost":
+            flash("Only found items can be marked as returned.", "error")
+            return redirect(url_for("item_detail", item_id=item_id))
         if item["item_status"] != "Returned":
             conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
     flash("Item marked as returned. Great news!", "success")

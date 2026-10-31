@@ -50,6 +50,34 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_mark_found_item_as_returned_succeeds(self):
+        response = self.client.post("/item/2/returned", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Item marked as returned", response.data)
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT item_status FROM items WHERE id = 2").fetchone()
+            self.assertEqual(item["item_status"], "Returned")
+
+    def test_mark_lost_item_as_returned_rejected(self):
+        response = self.client.post("/item/1/returned", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Only found items can be marked as returned.", response.data)
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT item_status FROM items WHERE id = 1").fetchone()
+            self.assertEqual(item["item_status"], "Lost")
+
+    def test_mark_nonexistent_item_as_returned_returns_404(self):
+        response = self.client.post("/item/99999/returned")
+        self.assertEqual(response.status_code, 404)
+
+    def test_mark_already_returned_item_handled_safely(self):
+        self.client.post("/item/3/returned")
+        response = self.client.post("/item/3/returned", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT item_status FROM items WHERE id = 3").fetchone()
+            self.assertEqual(item["item_status"], "Returned")
+
 
 if __name__ == "__main__":
     unittest.main()
