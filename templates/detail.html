@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
-<div class="detail-page">
+<div class="detail-page" data-item-id="{{ item.id }}" data-item-title="{{ item.title }}" data-item-category="{{ item.category }}" data-item-status="{{ item.item_status }}" data-item-image="{{ item.image_filename or '' }}">
   <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
   <div class="detail-layout">
     <section class="detail-main">
