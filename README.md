@@ -93,9 +93,48 @@ CampusFind/
 └── .github/
     └── pull_request_template.md
 
-## Data and uploads
+## Database and data persistence
 
-The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
+CampusFind uses SQLite to store reported items.
+
+### Database setup
+
+The database file is named `campusfind.db` and is located in the project root directory.
+
+The database is initialized automatically when `app.py` runs. The application creates the `items` table if it does not already exist.
+
+On the first initialization, if the table is empty, four sample listings are inserted automatically.
+
+You do not need to install or configure a separate database server.
+
+### Data persistence
+
+The SQLite database stores item information, including:
+
+- Item title and category
+- Lost, Found, or Returned status
+- Description and location
+- Date the item was lost or found
+- Contact name and email
+- Uploaded image filename
+- Record creation timestamp
+
+Data is stored locally in `campusfind.db` and remains available when the Flask application is restarted.
+
+Uploaded images are stored separately in `static/uploads/`.
+
+Both the database and uploaded images are excluded from Git and are generated locally.
+
+### Resetting the database
+
+To reset the local database and restore the four sample listings:
+
+1. Stop the Flask application using `Ctrl + C` in the terminal.
+2. Delete the `campusfind.db` file from the project root directory.
+3. Restart the application:
+
+```bash
+python app.py
 
 ## Running automated tests
 
