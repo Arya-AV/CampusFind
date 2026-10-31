@@ -46,6 +46,16 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Application routes
+
+| Method | Endpoint | Description | Parameters / Payload |
+|---|---|---|---|
+| `GET` | `/` | Browse and search lost/found listings | Query params: `q` (search term), `category` (category filter), `status` (`Lost`, `Found`, `Returned`), `sort` (`newest`, `oldest`) |
+| `GET` | `/item/<item_id>` | View details of a specific item | URL param: `item_id` (integer). Returns 404 if not found. |
+| `GET` | `/report` | Display the report form for lost or found items | None |
+| `POST` | `/report` | Submit a report for a lost or found item | Form fields: `title`, `category`, `item_status`, `description`, `location`, `item_date`, `contact_name`, `contact_email`, optional `image` (multipart). Redirects to `/item/<id>` on success. |
+| `POST` | `/item/<item_id>/returned` | Mark an existing found item as returned | URL param: `item_id` (integer). Returns 404 if item does not exist; redirects to `/item/<item_id>`. |
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
