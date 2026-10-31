@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-  <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body>
   <header class="site-header">
@@ -39,5 +38,7 @@
   <footer class="site-footer">
     <div class="footer-inner"><span>© {{ current_year }} CampusFind</span><span>Made for a more helpful campus <span class="heart">♥</span></span></div>
   </footer>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

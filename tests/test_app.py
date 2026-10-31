@@ -50,6 +50,36 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_recently_viewed_section_present(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'id="recentlyViewedSection"', response.data)
+        self.assertIn(b'id="recentlyViewedList"', response.data)
+
+    def test_item_detail_has_data_item_id(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'data-item-id="1"', response.data)
+
+    def test_items_alias_url_works(self):
+        response = self.client.get("/items/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Black Backpack", response.data)
+
+    def test_api_item_detail_success(self):
+        response = self.client.get("/api/items/1")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["id"], 1)
+        self.assertEqual(data["title"], "Black Backpack")
+        self.assertIsNone(data["image"])
+
+    def test_api_item_detail_not_found(self):
+        response = self.client.get("/api/items/99999")
+        self.assertEqual(response.status_code, 404)
+        data = response.get_json()
+        self.assertEqual(data.get("error"), "not found")
+
 
 if __name__ == "__main__":
     unittest.main()

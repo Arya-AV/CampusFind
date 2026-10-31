@@ -3,7 +3,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 
@@ -107,13 +107,28 @@ def index():
                            selected_category=category, selected_status=status, sort=sort)
 
 
-@app.route("/item/<int:item_id>")
+@app.route("/item/<int:item_id>", endpoint="item_detail")
+@app.route("/items/<int:item_id>", endpoint="detail")
 def item_detail(item_id):
     with get_db() as conn:
         item = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
     if item is None:
         abort(404)
     return render_template("detail.html", item=item)
+
+
+@app.route("/api/items/<int:item_id>")
+def api_item_detail(item_id):
+    with get_db() as conn:
+        item = conn.execute("SELECT id, title, image_filename FROM items WHERE id = ?", (item_id,)).fetchone()
+    if item is None:
+        return jsonify({"error": "not found"}), 404
+    image_url = url_for("static", filename=f"uploads/{item['image_filename']}") if item["image_filename"] else None
+    return jsonify({
+        "id": item["id"],
+        "title": item["title"],
+        "image": image_url
+    })
 
 
 @app.route("/report", methods=["GET", "POST"])

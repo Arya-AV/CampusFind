@@ -63,4 +63,10 @@
   <div class="empty-state"><div class="empty-icon">⌕</div><h3>No listings found</h3><p>Try another search or clear your filters to see all campus listings.</p><a class="button button-primary" href="{{ url_for('index') }}">View all listings</a></div>
   {% endif %}
 </section>
+
+<!-- Recently Viewed (hidden until JS fills it) -->
+<section id="recentlyViewedSection" class="recently-viewed hidden">
+  <h2>Recently Viewed</h2>
+  <div id="recentlyViewedList" class="recently-viewed__list"></div>
+</section>
 {% endblock %}
