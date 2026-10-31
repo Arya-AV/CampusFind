@@ -50,6 +50,21 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_report_invalid_email(self):
+        """Test that malformed emails like 'person@' are rejected by the server."""
+        response = self.client.post("/report", data={
+            "title": "Test Item",
+            "description": "Lost my watch",
+            "category": "Electronics",
+            "item_status": "Lost",
+            "location": "Library",
+            "item_date": "2026-10-31",
+            "contact_name": "John Doe",
+            "contact_email": "person@"
+        }, follow_redirects=True)
+        
+        self.assertIn(b"Invalid contact email address", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 import sqlite3
 import uuid
+import re  # Added for email validation
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
@@ -147,8 +148,11 @@ def report_item():
             errors.append("Enter a valid item date.")
         if not contact_name or len(contact_name) > 80:
             errors.append("Enter your name (up to 80 characters).")
-        if not contact_email or "@" not in contact_email or len(contact_email) > 120:
-            errors.append("Enter a valid contact email.")
+            
+        # Updated email validation with regex
+        email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        if not contact_email or len(contact_email) > 120 or not re.match(email_regex, contact_email):
+            errors.append("Invalid contact email address. Please include a valid domain.")
 
         image_filename = None
         image = request.files.get("image")
