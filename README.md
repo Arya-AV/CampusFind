@@ -46,6 +46,41 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Configuration
+
+CampusFind reads its settings from environment variables.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `SECRET_KEY` | Signs Flask sessions and flash messages | A random key generated at startup, with a warning (sessions reset on every restart) |
+| `FLASK_DEBUG` | Set to `1`, `true`, `yes` or `on` to enable debug mode | Debug mode is off |
+
+Set them in the same terminal before running the app.
+
+**Windows (PowerShell)**
+
+```
+$env:SECRET_KEY="a-long-random-string"
+$env:FLASK_DEBUG="1"
+python app.py
+```
+
+**macOS/Linux**
+
+```
+export SECRET_KEY="a-long-random-string"
+export FLASK_DEBUG=1
+python app.py
+```
+
+Generate a strong key with:
+
+```
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Never commit real secrets. If you keep them in a local `.env` file, it is ignored by Git.
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
