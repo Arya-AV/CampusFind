@@ -1,6 +1,7 @@
 from datetime import date
 from pathlib import Path
 import sqlite3
+import re
 import uuid
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
@@ -11,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-development-key"
@@ -147,7 +149,7 @@ def report_item():
             errors.append("Enter a valid item date.")
         if not contact_name or len(contact_name) > 80:
             errors.append("Enter your name (up to 80 characters).")
-        if not contact_email or "@" not in contact_email or len(contact_email) > 120:
+        if not contact_email or len(contact_email) > 120 or not EMAIL_REGEX.match(contact_email):
             errors.append("Enter a valid contact email.")
 
         image_filename = None

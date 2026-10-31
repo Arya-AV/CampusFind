@@ -50,6 +50,37 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_report_item_rejects_malformed_email(self):
+        malformed_emails = ["person@", "person", "@domain.com", "person@domain", "a" * 115 + "@example.com"]
+        for email in malformed_emails:
+            with self.subTest(email=email):
+                response = self.client.post("/report", data={
+                    "title": "Lost Wallet",
+                    "category": "Accessories",
+                    "item_status": "Lost",
+                    "description": "Black leather wallet",
+                    "location": "Cafeteria",
+                    "item_date": "2026-10-25",
+                    "contact_name": "Test User",
+                    "contact_email": email
+                }, follow_redirects=True)
+                self.assertIn(b"Enter a valid contact email.", response.data)
+
+    def test_report_item_accepts_valid_email(self):
+        response = self.client.post("/report", data={
+            "title": "Calculator",
+            "category": "Electronics",
+            "item_status": "Lost",
+            "description": "Scientific calculator",
+            "location": "Math Lab",
+            "item_date": "2026-10-25",
+            "contact_name": "Student A",
+            "contact_email": "student@example.com"
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Your item has been reported successfully.", response.data)
+        self.assertIn(b"Calculator", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
