@@ -4,7 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (search) {
     search.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        search.value = "";
+        event.preventDefault(); // Prevent default browser escape behavior
+        search.value = ""; // Clear the search text
+        search.closest("form").submit(); // Automatically submit the form to refresh results
       }
     });
   }
