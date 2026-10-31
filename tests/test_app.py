@@ -50,6 +50,19 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_consistent_category_placeholders_between_index_and_detail(self):
+        with campus_app.get_db() as conn:
+            cursor = conn.execute("""
+                INSERT INTO items (title, category, item_status, description, location, item_date, contact_name, contact_email)
+                VALUES ('Dorm Key', 'Keys', 'Found', 'Room key with tag', 'Hostel Gate', '2026-10-25', 'Guard', 'guard@example.com')
+            """)
+            key_id = cursor.lastrowid
+
+        res_index = self.client.get("/")
+        res_detail = self.client.get(f"/item/{key_id}")
+        self.assertIn("⚿".encode("utf-8"), res_index.data)
+        self.assertIn("⚿".encode("utf-8"), res_detail.data)
+
 
 if __name__ == "__main__":
     unittest.main()
