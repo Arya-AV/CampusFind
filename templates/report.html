@@ -12,7 +12,17 @@
       <label class="field"><span>Category <b>*</b></span><select name="category" required><option value="">Choose category</option>{% for cat in categories %}<option value="{{ cat }}" {% if form.get('category') == cat %}selected{% endif %}>{{ cat }}</option>{% endfor %}</select></label>
       <label class="field"><span>Where? <b>*</b></span><input name="location" maxlength="120" required placeholder="e.g. Main library, 2nd floor" value="{{ form.get('location', '') }}"></label>
       <label class="field"><span>Date lost or found <b>*</b></span><input type="date" name="item_date" max="{{ today }}" required value="{{ form.get('item_date', today) }}"></label>
-      <label class="field field-full"><span>Description <b>*</b></span><textarea name="description" maxlength="1000" rows="4" required placeholder="Add identifying details, colour, brand, or other clues...">{{ form.get('description', '') }}</textarea><small>Don't include private information printed on IDs or cards.</small></label>
+      
+      <!-- Updated Description Field with Character Counter -->
+      <label class="field field-full">
+        <span>Description <b>*</b></span>
+        <textarea id="desc-input" name="description" maxlength="1000" rows="4" required placeholder="Add identifying details, colour, brand, or other clues..." oninput="updateCounter()">{{ form.get('description', '') }}</textarea>
+        <div style="display: flex; justify-content: space-between;">
+          <small>Don't include private information printed on IDs or cards.</small>
+          <small id="char-count" style="font-weight: bold; color: #666;">0 / 1000</small>
+        </div>
+      </label>
+
       <label class="field field-full"><span>Photo <em>OPTIONAL</em></span><input type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp"><small>PNG, JPG, GIF or WEBP · Max 5 MB</small></label>
     </div>
     <div class="form-section-title contact-section"><span class="form-step">02</span><div><h2>Your contact details</h2><p>So a finder or owner can reach you.</p></div></div>
@@ -23,4 +33,15 @@
     <div class="form-actions"><a href="{{ url_for('index') }}" class="cancel-link">Cancel</a><button type="submit" class="button button-primary">Publish listing <span>↗</span></button></div>
   </form>
 </div>
+
+<!-- JavaScript for Live Character Counter -->
+<script>
+function updateCounter() {
+  var textarea = document.getElementById("desc-input");
+  var count = textarea.value.length;
+  document.getElementById("char-count").innerText = count + " / 1000";
+}
+// Run once on page load just in case the form reloads with existing text
+document.addEventListener("DOMContentLoaded", updateCounter);
+</script>
 {% endblock %}
