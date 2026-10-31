@@ -50,6 +50,40 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_item_detail_has_print_button(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        # Hidden until app.js confirms printing is available and shows it.
+        self.assertRegex(page, r'<button[^>]*type="button"[^>]*data-print-page[^>]*\bhidden\b[^>]*>')
+        self.assertIn("Print details", page)
+
+    def test_print_button_only_on_item_detail(self):
+        response = self.client.get("/")
+        self.assertNotIn(b"data-print-page", response.data)
+
+    def test_item_photo_is_marked_for_print(self):
+        with campus_app.get_db() as conn:
+            item_id = conn.execute(
+                """
+                INSERT INTO items (title, category, item_status, description, location,
+                                   item_date, contact_name, contact_email, image_filename)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("Red Notebook", "Books", "Found", "A red spiral notebook.", "Room 101",
+                 "2026-10-21", "Campus Desk", "helpdesk@example.com", "notebook.png"),
+            ).lastrowid
+        with_photo = self.client.get(f"/item/{item_id}")
+        self.assertIn(b'class="detail-visual has-image"', with_photo.data)
+        without_photo = self.client.get("/item/1")
+        self.assertNotIn(b"has-image", without_photo.data)
+
+    def test_stylesheet_includes_print_layout(self):
+        response = self.client.get("/static/css/styles.css")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"@media print", response.data)
+        response.close()
+
 
 if __name__ == "__main__":
     unittest.main()
