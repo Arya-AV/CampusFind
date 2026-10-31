@@ -6,7 +6,9 @@
     <span class="eyebrow"><span class="eyebrow-dot"></span> YOUR CAMPUS COMMUNITY</span>
     <h1>Lost something?<br><span>Let's find it.</span></h1>
     <p>One small campus. A hundred helpful people. Find lost belongings or help something make its way home.</p>
-    <a href="{{ url_for('report_item') }}" class="button button-primary hero-button">＋ Report lost or found item</a>
+    <a href="{{ url_for('detail', item_id=item.id, q=request.args.get('q', ''), category=request.args.get('category', ''), status=request.args.get('status', ''), sort=request.args.get('sort', '')) }}">
+    {{ item.title }}
+</a>') }}" class="button button-primary hero-button">＋ Report lost or found item</a>
   </div>
   <div class="hero-art" aria-hidden="true">
     <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>

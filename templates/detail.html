@@ -2,7 +2,7 @@
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
 <div class="detail-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+  <a class="back-link" href="{{ url_for('index', q=q, category=category, status=status, sort=sort) }}">← Back to listings</a>
   <div class="detail-layout">
     <section class="detail-main">
       <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
