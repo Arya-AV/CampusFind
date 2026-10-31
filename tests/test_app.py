@@ -1,5 +1,6 @@
 import unittest
 import tempfile
+import time
 from pathlib import Path
 
 import app as campus_app
@@ -233,6 +234,98 @@ class CampusFindTests(unittest.TestCase):
         self.assertIn(b"Eva Silver Watch", res.data)
         # Should not show other seeded items in my listings
         self.assertNotIn(b"Black Backpack", res.data)
+
+    def test_recently_viewed_not_tracked_for_unauthenticated_guests(self):
+        with campus_app.get_db() as conn:
+            count_before = conn.execute("SELECT COUNT(*) FROM recently_viewed").fetchone()[0]
+
+        # Unauthenticated user visits item 1
+        res_item = self.client.get("/item/1")
+        self.assertEqual(res_item.status_code, 200)
+
+        # Homepage should NOT have recently viewed section
+        res_home = self.client.get("/")
+        self.assertNotIn(b"Recently viewed items", res_home.data)
+
+        # Database count should not increase
+        with campus_app.get_db() as conn:
+            count_after = conn.execute("SELECT COUNT(*) FROM recently_viewed").fetchone()[0]
+            self.assertEqual(count_after, count_before)
+
+    def test_recently_viewed_tracked_and_displayed_for_logged_in_user(self):
+        self.register_and_login(name="Frank", email="frank@example.com")
+
+        # Before viewing any items, recently viewed section is not displayed
+        res_before = self.client.get("/")
+        self.assertNotIn(b"Recently viewed items", res_before.data)
+
+        # Frank views item 1 and item 2
+        self.client.get("/item/1")
+        self.client.get("/item/2")
+
+        # Homepage now displays the recently viewed section
+        res_after = self.client.get("/")
+        self.assertIn(b"Recently viewed items", res_after.data)
+        self.assertIn(b"Black Backpack", res_after.data)
+        self.assertIn(b"Blue Water Bottle", res_after.data)
+
+    def test_recently_viewed_ordering_and_deduplication(self):
+        self.register_and_login(name="Grace", email="grace@example.com")
+
+        # Grace views item 1, then item 2 with distinct timestamps
+        self.client.get("/item/1")
+        time.sleep(0.01)
+        self.client.get("/item/2")
+
+        with campus_app.get_db() as conn:
+            user = conn.execute("SELECT id FROM users WHERE email = 'grace@example.com'").fetchone()
+            recent = conn.execute("""
+                SELECT item_id FROM recently_viewed
+                WHERE user_id = ?
+                ORDER BY viewed_at DESC
+            """, (user["id"],)).fetchall()
+            # Item 2 was viewed most recently
+            self.assertEqual([r["item_id"] for r in recent], [2, 1])
+
+        # Re-visiting item 1 bumps it to the top
+        time.sleep(0.01)
+        self.client.get("/item/1")
+        with campus_app.get_db() as conn:
+            recent = conn.execute("""
+                SELECT item_id FROM recently_viewed
+                WHERE user_id = ?
+                ORDER BY viewed_at DESC
+            """, (user["id"],)).fetchall()
+            # Item 1 is now most recent, no duplicate rows
+            self.assertEqual([r["item_id"] for r in recent], [1, 2])
+
+    def test_recently_viewed_isolated_per_user(self):
+        # User 1 views item 1
+        self.register_and_login(name="User One", email="user1@example.com")
+        self.client.get("/item/1")
+
+        # Logout
+        self.client.get("/auth/logout")
+
+        # User 2 logs in
+        self.register_and_login(name="User Two", email="user2@example.com")
+        res_user2 = self.client.get("/")
+        # User 2 should NOT see recently viewed section since User 2 has not viewed anything
+        self.assertNotIn(b"Recently viewed items", res_user2.data)
+
+    def test_clear_recently_viewed(self):
+        self.register_and_login(name="Henry", email="henry@example.com")
+        self.client.get("/item/1")
+
+        # Confirm it appears
+        res_before = self.client.get("/")
+        self.assertIn(b"Recently viewed items", res_before.data)
+
+        # Clear recently viewed
+        clear_res = self.client.post("/recently-viewed/clear", follow_redirects=True)
+        self.assertEqual(clear_res.status_code, 200)
+        self.assertIn(b"Browsing history cleared", clear_res.data)
+        self.assertNotIn(b"recently-viewed-section", clear_res.data)
 
 
 if __name__ == "__main__":

@@ -279,3 +279,24 @@
 .switch-link:hover {
   color: var(--blue-dark);
 }
+
+
+/* Recently Viewed Section */
+.recently-viewed-section {
+  margin-bottom: 45px;
+  padding-bottom: 30px;
+  border-bottom: 1px dashed #e2e8f2;
+}
+.recent-grid {
+  margin-bottom: 10px;
+}
+.clear-recent-btn {
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.clear-recent-btn:hover {
+  color: #b5433b;
+  border-color: #f8d7d4;
+  background: #fff0ef;
+}

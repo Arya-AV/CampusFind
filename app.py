@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 import sqlite3
 import uuid
@@ -88,6 +88,20 @@ def init_db():
         if "user_id" not in columns:
             conn.execute("ALTER TABLE items ADD COLUMN user_id INTEGER REFERENCES users(id)")
 
+        # Create recently_viewed table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS recently_viewed (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                viewed_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                UNIQUE (user_id, item_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recently_viewed_user ON recently_viewed(user_id, viewed_at DESC)")
+
         count = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
         if count == 0:
             examples = [
@@ -124,6 +138,7 @@ def index():
     status = request.args.get("status", "").strip()
     sort = request.args.get("sort", "newest")
     only_mine = request.args.get("mine", "").strip() in ("1", "true")
+    current_user = getattr(g, "user", None)
 
     query = """
         SELECT items.*, users.name AS poster_name
@@ -142,9 +157,9 @@ def index():
     if status in STATUSES:
         query += " AND items.item_status = ?"
         params.append(status)
-    if only_mine and getattr(g, "user", None):
+    if only_mine and current_user:
         query += " AND items.user_id = ?"
-        params.append(g.user["id"])
+        params.append(current_user["id"])
 
     query += " ORDER BY items.item_date " + ("ASC" if sort == "oldest" else "DESC") + ", items.id DESC"
     with get_db() as conn:
@@ -156,11 +171,24 @@ def index():
             "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
         }
         my_count = 0
-        if getattr(g, "user", None):
+        if current_user:
             my_count = conn.execute(
                 "SELECT COUNT(*) FROM items WHERE user_id = ?",
-                (g.user["id"],)
+                (current_user["id"],)
             ).fetchone()[0]
+
+        # Fetch recently viewed items only for logged-in users and only on the main unfiltered page
+        recently_viewed = []
+        if current_user and not (search or category or status or only_mine):
+            recently_viewed = conn.execute("""
+                SELECT items.*, users.name AS poster_name
+                FROM recently_viewed
+                JOIN items ON recently_viewed.item_id = items.id
+                LEFT JOIN users ON items.user_id = users.id
+                WHERE recently_viewed.user_id = ?
+                ORDER BY recently_viewed.viewed_at DESC
+                LIMIT 6
+            """, (current_user["id"],)).fetchall()
 
     return render_template(
         "index.html",
@@ -172,11 +200,13 @@ def index():
         sort=sort,
         only_mine=only_mine,
         my_count=my_count,
+        recently_viewed=recently_viewed,
     )
 
 
 @app.route("/item/<int:item_id>")
 def item_detail(item_id):
+    current_user = getattr(g, "user", None)
     with get_db() as conn:
         item = conn.execute("""
             SELECT items.*, users.name AS poster_name, users.email AS poster_email
@@ -184,13 +214,31 @@ def item_detail(item_id):
             LEFT JOIN users ON items.user_id = users.id
             WHERE items.id = ?
         """, (item_id,)).fetchone()
-    if item is None:
-        abort(404)
+        if item is None:
+            abort(404)
 
-    current_user = getattr(g, "user", None)
+        # Record item view if user is logged in
+        if current_user:
+            now_ts = datetime.now(timezone.utc).isoformat()
+            conn.execute("""
+                INSERT INTO recently_viewed (user_id, item_id, viewed_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, item_id) DO UPDATE SET viewed_at = excluded.viewed_at
+            """, (current_user["id"], item_id, now_ts))
+
     is_owner = bool(current_user and item["user_id"] == current_user["id"])
-
     return render_template("detail.html", item=item, is_owner=is_owner)
+
+
+@app.route("/recently-viewed/clear", methods=["POST"])
+@login_required
+def clear_recently_viewed():
+    current_user = getattr(g, "user", None)
+    if current_user:
+        with get_db() as conn:
+            conn.execute("DELETE FROM recently_viewed WHERE user_id = ?", (current_user["id"],))
+        flash("Browsing history cleared.", "success")
+    return redirect(url_for("index"))
 
 
 @app.route("/report", methods=["GET", "POST"])
