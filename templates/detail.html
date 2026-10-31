@@ -51,18 +51,54 @@
               <strong>Has this found item been returned to its owner?</strong>
               <p>As the finder, you can mark this listing as returned to close it.</p>
             </div>
-            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned to owner?')">
-              <button class="button button-primary button-wide" type="submit">✓ Mark as returned</button>
+            <form id="markReturnedForm" class="mark-returned-form" method="post" action="{{ url_for('mark_returned', item_id=item.id) }}">
+              <button class="button button-primary button-wide" type="submit" id="markReturnedBtn">✓ Mark as returned</button>
             </form>
           {% else %}
             <div class="detail-note">
               <strong>Did you recover or find your lost item?</strong>
               <p>You can close this listing by marking it as recovered / found.</p>
             </div>
-            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this lost item as recovered/found?')">
-              <button class="button button-primary button-wide" type="submit">✓ Mark as recovered / found</button>
+            <form id="markReturnedForm" class="mark-returned-form" method="post" action="{{ url_for('mark_returned', item_id=item.id) }}">
+              <button class="button button-primary button-wide" type="submit" id="markReturnedBtn">✓ Mark as recovered / found</button>
             </form>
           {% endif %}
+
+          <!-- Confirmation Modal Prompt -->
+          <div id="confirmReturnedModal" class="modal-backdrop confirm-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc">
+            <div class="modal-card confirm-modal-card">
+              <button type="button" class="modal-close" id="closeConfirmModal" aria-label="Cancel and close">&times;</button>
+              
+              <div class="confirm-modal-body">
+                <div class="confirm-icon-badge" aria-hidden="true">✓</div>
+                <h2 id="confirmModalTitle" class="confirm-modal-title">
+                  {% if item.item_status == 'Found' %}
+                    Mark item as returned?
+                  {% else %}
+                    Mark item as recovered?
+                  {% endif %}
+                </h2>
+                <p id="confirmModalDesc" class="confirm-modal-desc">
+                  {% if item.item_status == 'Found' %}
+                    Are you sure you want to mark <strong>"{{ item.title }}"</strong> as returned to its owner? This will resolve and close the listing.
+                  {% else %}
+                    Are you sure you want to mark <strong>"{{ item.title }}"</strong> as recovered? This will resolve and close the listing.
+                  {% endif %}
+                </p>
+              </div>
+
+              <div class="confirm-modal-actions">
+                <button type="button" class="button button-ghost" id="cancelConfirmBtn">Cancel</button>
+                <button type="button" class="button button-primary" id="acceptConfirmBtn">
+                  {% if item.item_status == 'Found' %}
+                    Yes, mark as returned
+                  {% else %}
+                    Yes, mark as recovered
+                  {% endif %}
+                </button>
+              </div>
+            </div>
+          </div>
         {% else %}
           <div class="detail-note">
             <strong>Is this your item?</strong>

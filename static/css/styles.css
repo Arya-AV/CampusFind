@@ -300,3 +300,59 @@
   border-color: #f8d7d4;
   background: #fff0ef;
 }
+
+
+/* Confirmation Modal Specifics */
+.confirm-modal-card {
+  width: min(440px, 100%);
+  text-align: center;
+  padding: 36px 30px 28px;
+}
+.confirm-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.confirm-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #ecf3fe;
+  color: var(--blue, #2463eb);
+  font-size: 26px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 2px solid #d4e3fc;
+}
+.confirm-modal-title {
+  font-family: Manrope, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink, #121c30);
+  margin: 0 0 10px;
+  letter-spacing: -0.4px;
+}
+.confirm-modal-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted, #64748b);
+  margin: 0 0 24px;
+}
+.confirm-modal-desc strong {
+  color: var(--ink, #121c30);
+}
+.confirm-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+.confirm-modal-actions .button {
+  flex: 1;
+  padding: 11px 18px;
+  font-size: 14px;
+  justify-content: center;
+}

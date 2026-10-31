@@ -207,4 +207,88 @@ document.addEventListener("DOMContentLoaded", () => {
       handleAuthSubmit(signupForm, signupForm.action);
     });
   }
+
+  // Return / Recovery Confirmation Prompt Modal logic
+  const confirmModal = document.getElementById("confirmReturnedModal");
+  const returnForm = document.getElementById("markReturnedForm") || document.querySelector("form.mark-returned-form");
+
+  if (confirmModal && returnForm) {
+    const closeBtn = document.getElementById("closeConfirmModal");
+    const cancelBtn = document.getElementById("cancelConfirmBtn");
+    const acceptBtn = document.getElementById("acceptConfirmBtn");
+    let isConfirmed = false;
+    let lastFocusedElement = null;
+
+    function openConfirmModal() {
+      lastFocusedElement = document.activeElement;
+      confirmModal.classList.add("open");
+      confirmModal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      // Focus cancel button first to prevent accidental confirmation
+      if (cancelBtn) {
+        cancelBtn.focus();
+      }
+    }
+
+    function closeConfirmModal() {
+      confirmModal.classList.remove("open");
+      confirmModal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+        lastFocusedElement.focus();
+      }
+    }
+
+    returnForm.addEventListener("submit", (e) => {
+      if (!isConfirmed) {
+        e.preventDefault();
+        openConfirmModal();
+      }
+    });
+
+    cancelBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeConfirmModal();
+    });
+
+    closeBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeConfirmModal();
+    });
+
+    acceptBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      isConfirmed = true;
+      returnForm.submit();
+    });
+
+    confirmModal.addEventListener("click", (e) => {
+      if (e.target === confirmModal) {
+        closeConfirmModal();
+      }
+    });
+
+    // Keyboard navigation & accessibility
+    document.addEventListener("keydown", (e) => {
+      if (!confirmModal.classList.contains("open")) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeConfirmModal();
+      } else if (e.key === "Tab") {
+        const focusable = confirmModal.querySelectorAll("button:not([disabled])");
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+  }
 });

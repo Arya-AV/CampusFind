@@ -759,5 +759,99 @@ class CampusFindTests(unittest.TestCase):
         self.assertFalse(campus_app.validate_image(None))
 
 
+
+    # --- Tests for Return Confirmation Prompt ---
+
+    def test_confirmation_modal_rendered_for_owner(self):
+        """Verify that eligible items render the confirmation modal with title, description, and action buttons."""
+        self.register_and_login(name="Confirm Owner", email="confirm_owner@example.com")
+        self.client.post("/report", data={
+            "title": "Modal Test Backpack",
+            "category": "Bags",
+            "item_status": "Found",
+            "description": "Found a backpack for testing confirmation modal.",
+            "location": "Cafeteria",
+            "item_date": "2026-10-31",
+            "contact_name": "Confirm Owner",
+            "contact_email": "confirm_owner@example.com",
+        })
+
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'Modal Test Backpack'").fetchone()
+            item_id = item["id"]
+
+        res = self.client.get(f"/item/{item_id}")
+        self.assertEqual(res.status_code, 200)
+
+        # Confirm form and modal elements are present
+        self.assertIn(b"markReturnedForm", res.data)
+        self.assertIn(b"confirmReturnedModal", res.data)
+        self.assertIn(b"confirmModalTitle", res.data)
+        self.assertIn(b"cancelConfirmBtn", res.data)
+        self.assertIn(b"acceptConfirmBtn", res.data)
+        self.assertIn(b"closeConfirmModal", res.data)
+
+        # Confirm buttons have appropriate labels
+        self.assertIn(b"Mark item as returned?", res.data)
+        self.assertIn(b"Cancel", res.data)
+        self.assertIn(b"Yes, mark as returned", res.data)
+
+    def test_confirmation_modal_not_rendered_for_non_owner(self):
+        """Verify that non-owners cannot see the mark returned form or confirmation modal."""
+        # Owner creates item
+        self.register_and_login(name="Real Owner", email="real_owner@example.com")
+        self.client.post("/report", data={
+            "title": "Private Item",
+            "category": "Keys",
+            "item_status": "Lost",
+            "description": "Owner item description",
+            "location": "Gym",
+            "item_date": "2026-10-31",
+            "contact_name": "Real Owner",
+            "contact_email": "real_owner@example.com",
+        })
+
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'Private Item'").fetchone()
+            item_id = item["id"]
+
+        # Log out and log in as another user
+        self.client.get("/auth/logout")
+        self.register_and_login(name="Other Viewer", email="other_viewer@example.com")
+
+        res = self.client.get(f"/item/{item_id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn(b"confirmReturnedModal", res.data)
+        self.assertNotIn(b"markReturnedForm", res.data)
+        self.assertNotIn(b"acceptConfirmBtn", res.data)
+
+    def test_confirmation_modal_not_rendered_for_already_returned_item(self):
+        """Verify that already returned items show the resolved banner and no confirmation modal."""
+        self.register_and_login(name="Returned Owner", email="ret_owner@example.com")
+        self.client.post("/report", data={
+            "title": "Already Resolved Item",
+            "category": "Books",
+            "item_status": "Found",
+            "description": "Already resolved book",
+            "location": "Library",
+            "item_date": "2026-10-31",
+            "contact_name": "Returned Owner",
+            "contact_email": "ret_owner@example.com",
+        })
+
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'Already Resolved Item'").fetchone()
+            item_id = item["id"]
+
+        # Mark as returned
+        self.client.post(f"/item/{item_id}/returned", follow_redirects=True)
+
+        res = self.client.get(f"/item/{item_id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"returned-banner", res.data)
+        self.assertNotIn(b"confirmReturnedModal", res.data)
+        self.assertNotIn(b"markReturnedForm", res.data)
+
+
 if __name__ == "__main__":
     unittest.main()
