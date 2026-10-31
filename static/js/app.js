@@ -28,4 +28,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Print item details button
+  const printButton = document.getElementById("print-item-button");
+  if (printButton) {
+    printButton.addEventListener("click", () => {
+      window.print();
+    });
+  }
 });
