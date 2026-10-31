@@ -1,16 +1,25 @@
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 import sqlite3
 import uuid
+import warnings
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
-from werkzeug.utils import secure_filename
-from contextlib import contextmanager
+from PIL import Image, UnidentifiedImageError
 
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+IMAGE_FORMAT_BY_EXTENSION = {
+    "png": "PNG",
+    "jpg": "JPEG",
+    "jpeg": "JPEG",
+    "gif": "GIF",
+    "webp": "WEBP",
+}
+IMAGE_EXTENSION_BY_FORMAT = {"PNG": "png", "JPEG": "jpg", "GIF": "gif", "WEBP": "webp"}
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-development-key"
@@ -68,7 +77,39 @@ def init_db():
 
 
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return Path(filename).suffix.lower().lstrip(".") in ALLOWED_EXTENSIONS
+
+
+def valid_image_format(upload):
+    extension = Path(upload.filename).suffix.lower().lstrip(".")
+    expected_format = IMAGE_FORMAT_BY_EXTENSION.get(extension)
+    if expected_format is None:
+        return None
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(upload.stream, formats=tuple(IMAGE_EXTENSION_BY_FORMAT)) as image:
+                if image.format != expected_format:
+                    return None
+                image.verify()
+
+            # verify() checks structure without decoding pixels; reopen and load to
+            # catch truncated or otherwise undecodable image data as well.
+            upload.stream.seek(0)
+            with Image.open(upload.stream, formats=(expected_format,)) as image:
+                image.load()
+            return expected_format
+    except (
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+    ):
+        return None
+    finally:
+        upload.stream.seek(0)
 
 
 @app.context_processor
@@ -156,8 +197,12 @@ def report_item():
             if not allowed_file(image.filename):
                 errors.append("Image must be PNG, JPG, JPEG, GIF, or WEBP.")
             else:
-                suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower()
-                image_filename = f"{uuid.uuid4().hex}.{suffix}"
+                image_format = valid_image_format(image)
+                if image_format is None:
+                    errors.append("Uploaded file is not a valid PNG, JPG, JPEG, GIF, or WEBP image.")
+                else:
+                    suffix = IMAGE_EXTENSION_BY_FORMAT[image_format]
+                    image_filename = f"{uuid.uuid4().hex}.{suffix}"
 
         if errors:
             for error in errors:
