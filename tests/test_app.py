@@ -30,6 +30,12 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Black Backpack", response.data)
 
+    def test_search_with_empty_query_preserves_filters(self):
+        response = self.client.get("/?q=&status=Found&category=Accessories")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Blue Water Bottle", response.data)
+        self.assertNotIn(b"Black Backpack", response.data)
+
     def test_filter_by_status(self):
         response = self.client.get("/?status=Found")
         self.assertEqual(response.status_code, 200)
