@@ -50,6 +50,17 @@ Open http://127.0.0.1:5000 in your browser.
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
 
+## Running automated tests
+
+CampusFind uses Python's built-in `unittest` framework and Flask's test client.
+
+Make sure you are in the project's root directory and have activated your virtual environment.
+
+Install the project dependencies:
+
+```bash
+pip install -r requirements.txt
+
 ## Development notes
 
 This is a learning/demo project, not a production deployment. Before deploying publicly, set a secure `SECRET_KEY`, add authentication and authorization, add CSRF protection, and review contact-data privacy and upload handling.
