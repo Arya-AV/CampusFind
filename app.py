@@ -2,6 +2,8 @@ from datetime import date
 from pathlib import Path
 import sqlite3
 import uuid
+import os
+import secrets
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
@@ -13,7 +15,18 @@ UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-development-key"
+def load_secret_key():
+    key = os.environ.get("SECRET_KEY")
+    if not key:
+        key = secrets.token_hex(32)
+        app.logger.warning(
+            "SECRET_KEY is not set; using a temporary random key. "
+            "Set SECRET_KEY to keep sessions valid across restarts."
+        )
+    return key
+
+
+app.config["SECRET_KEY"] = load_secret_key()
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
@@ -207,5 +220,10 @@ def too_large(_error):
 
 init_db()
 
+def is_debug_enabled():
+    value = os.environ.get("FLASK_DEBUG", "0")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=is_debug_enabled())
