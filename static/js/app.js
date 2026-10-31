@@ -28,4 +28,28 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const returnForm = document.querySelector("#mark-returned-form");
+  const returnDialog = document.querySelector("#return-confirmation");
+  const confirmReturn = document.querySelector("#confirm-return");
+  const cancelReturn = document.querySelector("#cancel-return");
+
+  if (returnForm && returnDialog && confirmReturn && cancelReturn) {
+    let confirmedReturn = false;
+    returnForm.addEventListener("submit", (event) => {
+      if (confirmedReturn) {
+        confirmedReturn = false;
+        return;
+      }
+      event.preventDefault();
+      returnDialog.showModal();
+    });
+
+    cancelReturn.addEventListener("click", () => returnDialog.close());
+    confirmReturn.addEventListener("click", () => {
+      confirmedReturn = true;
+      returnDialog.close();
+      returnForm.requestSubmit();
+    });
+  }
 });
