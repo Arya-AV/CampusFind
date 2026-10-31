@@ -1,6 +1,10 @@
 import unittest
+import unittest.mock
 import tempfile
 import time
+import io
+import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 import app as campus_app
@@ -452,6 +456,50 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(clear_res.status_code, 200)
         self.assertIn(b"Browsing history cleared", clear_res.data)
         self.assertNotIn(b"recently-viewed-section", clear_res.data)
+
+    def test_uploaded_image_deleted_on_db_insert_failure(self):
+        self.register_and_login(name="Image Test User", email="imagetest@example.com")
+
+        # Dummy valid PNG bytes
+        image_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
+        upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
+        before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+
+        # Simulate database failure specifically during INSERT INTO items
+        original_get_db = campus_app.get_db
+
+        @contextmanager
+        def failing_get_db():
+            with original_get_db() as conn:
+                real_execute = conn.execute
+
+                def mock_execute(query, *args, **kwargs):
+                    if "INSERT INTO items" in query:
+                        raise sqlite3.OperationalError("Simulated database failure during item creation")
+                    return real_execute(query, *args, **kwargs)
+
+                mock_conn = unittest.mock.MagicMock(wraps=conn)
+                mock_conn.execute.side_effect = mock_execute
+                yield mock_conn
+
+        with unittest.mock.patch("app.get_db", side_effect=failing_get_db):
+            with self.assertRaises(Exception):
+                self.client.post("/report", data={
+                    "title": "Failed DB Item",
+                    "category": "Electronics",
+                    "item_status": "Lost",
+                    "description": "This item should fail to insert into DB.",
+                    "location": "Library",
+                    "item_date": "2026-10-30",
+                    "contact_name": "Image Test User",
+                    "contact_email": "imagetest@example.com",
+                    "image": (io.BytesIO(image_content), "test_orphaned.png"),
+                })
+
+        # Verify that no new orphaned file remained in the uploads directory
+        after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+        orphaned = after_files - before_files
+        self.assertEqual(len(orphaned), 0, f"Orphaned files remained on disk: {orphaned}")
 
 
 if __name__ == "__main__":

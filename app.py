@@ -292,20 +292,32 @@ def report_item():
                 flash(error, "error")
             return render_template("report.html", form=request.form, today=date.today().isoformat())
 
+        saved_image_path = None
         if image_filename:
-            UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+            upload_dir = Path(app.config.get("UPLOAD_FOLDER", UPLOAD_DIR))
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            saved_image_path = upload_dir / image_filename
+            image.save(saved_image_path)
 
         user_id = current_user["id"] if current_user else None
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename, user_id))
-            item_id = cursor.lastrowid
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename, user_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename, user_id))
+                item_id = cursor.lastrowid
+        except Exception:
+            # Clean up uploaded image if database insertion fails
+            if saved_image_path and saved_image_path.exists():
+                try:
+                    saved_image_path.unlink()
+                except OSError:
+                    pass
+            raise
 
         flash(f"Your {item_status.lower()} item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
