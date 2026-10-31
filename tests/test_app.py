@@ -50,6 +50,13 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_item_detail_has_print_button(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"print-btn", response.data)
+        self.assertIn(b"window.print()", response.data)
+        self.assertIn(b"Print details", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
