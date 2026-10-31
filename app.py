@@ -77,34 +77,82 @@ def inject_globals():
 
 
 @app.route("/")
+
+@app.route("/")
 def index():
     search = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
     status = request.args.get("status", "").strip()
     sort = request.args.get("sort", "newest")
-    query = "SELECT * FROM items WHERE 1=1"
+
+    # Pagination settings
+    per_page = 6
+    page = request.args.get("page", 1, type=int)
+    page = max(page or 1, 1)
+    offset = (page - 1) * per_page
+
+    # Build the filtering query
+    query = " FROM items WHERE 1=1"
     params = []
+
     if search:
         query += " AND (title LIKE ? OR description LIKE ? OR location LIKE ?)"
         term = f"%{search}%"
         params.extend([term, term, term])
+
     if category in CATEGORIES:
         query += " AND category = ?"
         params.append(category)
+
     if status in STATUSES:
         query += " AND item_status = ?"
         params.append(status)
-    query += " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
+
+    # Count matching listings for pagination
     with get_db() as conn:
-        items = conn.execute(query, params).fetchall()
+        total_items = conn.execute(
+            "SELECT COUNT(*)" + query, params
+        ).fetchone()[0]
+
+        total_pages = max(1, (total_items + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        offset = (page - 1) * per_page
+
+        order = "ASC" if sort == "oldest" else "DESC"
+
+        items = conn.execute(
+            "SELECT *" + query
+            + f" ORDER BY item_date {order}, id DESC LIMIT ? OFFSET ?",
+            params + [per_page, offset]
+        ).fetchall()
+
         counts = {
-            "all": conn.execute("SELECT COUNT(*) FROM items").fetchone()[0],
-            "lost": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Lost'").fetchone()[0],
-            "found": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Found'").fetchone()[0],
-            "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
+            "all": conn.execute(
+                "SELECT COUNT(*) FROM items"
+            ).fetchone()[0],
+            "lost": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Lost'"
+            ).fetchone()[0],
+            "found": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Found'"
+            ).fetchone()[0],
+            "returned": conn.execute(
+                "SELECT COUNT(*) FROM items WHERE item_status='Returned'"
+            ).fetchone()[0],
         }
-    return render_template("index.html", items=items, counts=counts, q=search,
-                           selected_category=category, selected_status=status, sort=sort)
+
+    return render_template(
+        "index.html",
+        items=items,
+        counts=counts,
+        q=search,
+        selected_category=category,
+        selected_status=status,
+        sort=sort,
+        page=page,
+        total_pages=total_pages
+    )
+
 
 
 @app.route("/item/<int:item_id>")

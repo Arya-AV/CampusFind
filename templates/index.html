@@ -59,6 +59,27 @@
     </article>
     {% endfor %}
   </div>
+    {% if total_pages > 1 %}
+  <nav class="pagination" aria-label="Listings pagination">
+    {% if page > 1 %}
+      <a class="pagination-link"
+         href="{{ url_for('index', q=q, category=selected_category, status=selected_status, sort=sort, page=page-1) }}">
+        Previous
+      </a>
+    {% endif %}
+
+    <span class="pagination-info">
+      Page {{ page }} of {{ total_pages }}
+    </span>
+
+    {% if page < total_pages %}
+      <a class="pagination-link"
+         href="{{ url_for('index', q=q, category=selected_category, status=selected_status, sort=sort, page=page+1) }}">
+        Next
+      </a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <div class="empty-state"><div class="empty-icon">⌕</div><h3>No listings found</h3><p>Try another search or clear your filters to see all campus listings.</p><a class="button button-primary" href="{{ url_for('index') }}">View all listings</a></div>
   {% endif %}
