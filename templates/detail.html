@@ -6,20 +6,73 @@
   <div class="detail-layout">
     <section class="detail-main">
       <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
-        {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}<span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span><span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% else %}✦{% endif %}</span>{% endif %}
+        {% if item.image_filename %}
+          <img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">
+        {% else %}
+          <span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span>
+          <span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% elif item.category == 'Keys' %}⚿{% else %}✦{% endif %}</span>
+        {% endif %}
       </div>
-      <div class="detail-description"><span class="eyebrow">ITEM DESCRIPTION</span><h2>About this item</h2><p>{{ item.description }}</p></div>
+      <div class="detail-description">
+        <span class="eyebrow">ITEM DESCRIPTION</span>
+        <h2>About this item</h2>
+        <p>{{ item.description }}</p>
+      </div>
     </section>
     <aside class="detail-sidebar">
-      <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
+      <div class="pill-group">
+        <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
+        {% if is_owner %}
+          <span class="owner-pill-lg">★ You reported this</span>
+        {% endif %}
+      </div>
       <span class="detail-category">{{ item.category }} <span>·</span> Posted {{ item.item_date }}</span>
       <h1>{{ item.title }}</h1>
-      <div class="detail-info"><span class="info-icon">⌖</span><div><small>LAST SEEN / FOUND AT</small><strong>{{ item.location }}</strong></div></div>
-      <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
+      <div class="detail-info">
+        <span class="info-icon">⌖</span>
+        <div>
+          <small>LAST SEEN / FOUND AT</small>
+          <strong>{{ item.location }}</strong>
+        </div>
+      </div>
+      <div class="detail-info">
+        <span class="info-icon">♙</span>
+        <div>
+          <small>CONTACT PERSON</small>
+          <strong>{{ item.contact_name }}</strong>
+          <a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a>
+        </div>
+      </div>
+
       {% if item.item_status != 'Returned' %}
-      <div class="detail-note"><strong>Is this your item?</strong><p>Reach out to the contact person to coordinate a safe return.</p></div>
-      {% if item.item_status == 'Found' %}<form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned?')"><button class="button button-primary button-wide" type="submit">✓ Mark as returned</button></form>{% else %}<div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>{% endif %}
-      {% else %}<div class="returned-banner">✓ This item has been reunited with its owner.</div>{% endif %}
+        {% if is_owner %}
+          {% if item.item_status == 'Found' %}
+            <div class="detail-note">
+              <strong>Has this found item been returned to its owner?</strong>
+              <p>As the finder, you can mark this listing as returned to close it.</p>
+            </div>
+            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned to owner?')">
+              <button class="button button-primary button-wide" type="submit">✓ Mark as returned</button>
+            </form>
+          {% else %}
+            <div class="detail-note">
+              <strong>Did you recover or find your lost item?</strong>
+              <p>You can close this listing by marking it as recovered / found.</p>
+            </div>
+            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this lost item as recovered/found?')">
+              <button class="button button-primary button-wide" type="submit">✓ Mark as recovered / found</button>
+            </form>
+          {% endif %}
+        {% else %}
+          <div class="detail-note">
+            <strong>Is this your item?</strong>
+            <p>Reach out to the contact person to coordinate a safe return.</p>
+          </div>
+          <div class="detail-note muted-note">Only the person who posted this listing can update or close it.</div>
+        {% endif %}
+      {% else %}
+        <div class="returned-banner">✓ This item has been reunited with its owner.</div>
+      {% endif %}
     </aside>
   </div>
 </div>

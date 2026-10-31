@@ -1,0 +1,80 @@
+<div id="authModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="closeAuthModal" aria-label="Close modal">&times;</button>
+    
+    <div class="modal-header">
+      <div class="modal-brand">
+        <span class="brand-mark modal-brand-mark">C</span>
+        <div>
+          <h2 id="modalTitle">CampusFind</h2>
+          <small>CAMPUS COMMUNITY PORTAL</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-tabs" role="tablist">
+      <button type="button" class="tab-btn active" id="tabLoginBtn" data-target="loginTab" role="tab" aria-selected="true">Sign In</button>
+      <button type="button" class="tab-btn" id="tabSignupBtn" data-target="signupTab" role="tab" aria-selected="false">Create Account</button>
+    </div>
+
+    <div id="modalAlert" class="modal-alert" style="display:none;" role="alert"></div>
+
+    <!-- Login Form -->
+    <div id="loginTab" class="modal-tab-content">
+      <form id="loginForm" method="post" action="{{ url_for('auth.login') }}">
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+        <div class="form-grid modal-form-grid">
+          <label class="field field-full">
+            <span>Email address <b>*</b></span>
+            <input type="email" name="email" required placeholder="you@campus.edu" autocomplete="email">
+          </label>
+          <label class="field field-full">
+            <span>Password <b>*</b></span>
+            <input type="password" name="password" required placeholder="Enter your password" autocomplete="current-password">
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="button button-primary button-wide">Sign In <span>↗</span></button>
+        </div>
+      </form>
+      <p class="modal-switch-text">
+        Don't have an account yet?
+        <button type="button" class="switch-link" id="switchToSignup">Create an account</button>
+      </p>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signupTab" class="modal-tab-content" style="display:none;">
+      <form id="signupForm" method="post" action="{{ url_for('auth.signup') }}">
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+        <div class="form-grid modal-form-grid">
+          <label class="field field-full">
+            <span>Full Name <b>*</b></span>
+            <input type="text" name="name" maxlength="80" required placeholder="e.g. Alex Morgan" autocomplete="name">
+          </label>
+          <label class="field field-full">
+            <span>Campus / Contact Email <b>*</b></span>
+            <input type="email" name="email" maxlength="120" required placeholder="alex@campus.edu" autocomplete="email">
+          </label>
+          <label class="field field-full">
+            <span>Password <b>*</b></span>
+            <input type="password" name="password" minlength="6" maxlength="128" required placeholder="At least 6 characters" autocomplete="new-password">
+            <small>Stored securely with encrypted one-way hashing.</small>
+          </label>
+          <label class="field field-full">
+            <span>Confirm Password <b>*</b></span>
+            <input type="password" name="confirm_password" minlength="6" maxlength="128" required placeholder="Re-enter your password" autocomplete="new-password">
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="button button-primary button-wide">Create Account <span>↗</span></button>
+        </div>
+      </form>
+      <p class="modal-switch-text">
+        Already have an account?
+        <button type="button" class="switch-link" id="switchToLogin">Sign in instead</button>
+      </p>
+    </div>
+  </div>
+</div>
+
