@@ -46,6 +46,21 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Application routes
+
+| Route | HTTP method | Description |
+|---|---|---|
+| `/` | GET | Displays all reported items. Supports searching by title, description, or location, filtering by category and status, and sorting by date. |
+| `/item/<int:item_id>` | GET | Displays the details of a specific item. Returns a 404 page if the item does not exist. |
+| `/report` | GET | Displays the form for reporting a lost or found item. |
+| `/report` | POST | Validates the submitted item details, optionally saves an uploaded image, stores the report in the SQLite database, and redirects to its detail page. |
+| `/item/<int:item_id>/returned` | POST | Marks the specified item as returned and redirects to its detail page. |
+
+### Error handling
+
+- **404:** Displays a custom page when a requested item or route is not found.
+- **413:** Handles image uploads exceeding the configured maximum request size.
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
