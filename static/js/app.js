@@ -28,4 +28,43 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const returnForm = document.querySelector(".return-form");
+  const returnConfirmation = document.querySelector(".return-confirmation");
+  if (returnForm && returnConfirmation) {
+    let confirmed = false;
+    const submitButton = returnForm.querySelector('button[type="submit"]');
+
+    returnForm.addEventListener("submit", (event) => {
+      if (confirmed) {
+        confirmed = false;
+        return;
+      }
+
+      event.preventDefault();
+      returnConfirmation.showModal();
+    });
+
+    returnConfirmation.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      returnConfirmation.close("cancel");
+    });
+
+    returnConfirmation.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        returnConfirmation.close("cancel");
+      }
+    });
+
+    returnConfirmation.addEventListener("close", () => {
+      if (returnConfirmation.returnValue !== "confirm") {
+        submitButton.focus();
+        return;
+      }
+
+      confirmed = true;
+      returnForm.requestSubmit(submitButton);
+    });
+  }
 });
