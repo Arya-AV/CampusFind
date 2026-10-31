@@ -37,4 +37,55 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  document.querySelectorAll(".copy-email-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const email = btn.dataset.email;
+      if (!email) return;
+
+      const setFeedback = (text, className) => {
+        const originalText = btn.dataset.originalText || btn.textContent;
+        btn.dataset.originalText = originalText;
+        btn.textContent = text;
+        if (className) btn.classList.add(className);
+        btn.disabled = true;
+
+        setTimeout(() => {
+          btn.textContent = originalText;
+          if (className) btn.classList.remove(className);
+          btn.disabled = false;
+        }, 2000);
+      };
+
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(email);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = email;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          textArea.style.top = "0";
+
+          document.body.appendChild(textArea);
+
+          try {
+            textArea.focus();
+            textArea.select();
+
+            const successful = document.execCommand("copy");
+
+            if (!successful) {
+              throw new Error("Copy command failed");
+            }
+          } finally {
+            textArea.remove();
+          }
+        }
+        setFeedback("Copied!", "copied");
+      } catch (err) {
+        setFeedback("Failed to copy", "failed");
+      }
+    });
+  });
 });
