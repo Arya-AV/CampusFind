@@ -10,3 +10,9 @@
 .copy-status{display:block;font-size:10px;font-weight:600;color:var(--green);margin-top:4px}
 .copy-status:empty{display:none}
 .copy-status.copy-error{color:#b5433b}
+.confirm-dialog{border:0;border-radius:16px;padding:24px;max-width:380px;width:calc(100% - 40px);color:var(--ink);box-shadow:0 20px 50px #17233d33}
+.confirm-dialog::backdrop{background:#17233d66}
+.confirm-dialog h2{font-family:Manrope,sans-serif;font-size:18px;margin:0 0 8px}
+.confirm-dialog p{color:#69768e;font-size:12px;line-height:1.7;margin:0 0 20px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:10px}
+.confirm-cancel{background:#f0f3ff;color:var(--blue)}
