@@ -18,8 +18,31 @@
       <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
       {% if item.item_status != 'Returned' %}
       <div class="detail-note"><strong>Is this your item?</strong><p>Reach out to the contact person to coordinate a safe return.</p></div>
-      {% if item.item_status == 'Found' %}<form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned?')"><button class="button button-primary button-wide" type="submit">✓ Mark as returned</button></form>{% else %}<div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>{% endif %}
-      {% else %}<div class="returned-banner">✓ This item has been reunited with its owner.</div>{% endif %}
+      {% if item.item_status == 'Found' %}
+      <form id="mark-returned-form" method="post" action="{{ url_for('mark_returned', item_id=item.id) }}">
+        <button id="mark-returned-button" class="button button-primary button-wide" type="button">✓ Mark as returned</button>
+        <dialog id="return-confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-desc">
+          <div class="confirm-dialog-content">
+            <div class="confirm-dialog-header">
+              <span class="confirm-dialog-badge">✓</span>
+              <div>
+                <h3 id="confirm-dialog-title">Mark as returned?</h3>
+                <p id="confirm-dialog-desc">Are you sure this item has been reunited with its owner? This action will update the listing status to Returned.</p>
+              </div>
+            </div>
+            <div class="confirm-dialog-actions">
+              <button id="cancel-returned-button" class="button button-cancel" type="button" data-action="cancel">Cancel</button>
+              <button id="confirm-returned-button" class="button button-primary" type="submit" form="mark-returned-form" data-action="confirm">Confirm</button>
+            </div>
+          </div>
+        </dialog>
+      </form>
+      {% else %}
+      <div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>
+      {% endif %}
+      {% else %}
+      <div class="returned-banner">✓ This item has been reunited with its owner.</div>
+      {% endif %}
     </aside>
   </div>
 </div>

@@ -50,6 +50,19 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_found_item_has_confirmation_dialog(self):
+        response = self.client.get("/item/2")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"return-confirm-dialog", response.data)
+        self.assertIn(b"cancel-returned-button", response.data)
+        self.assertIn(b"confirm-returned-button", response.data)
+
+    def test_mark_returned_updates_status(self):
+        response = self.client.post("/item/2/returned", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Item marked as returned. Great news!", response.data)
+        self.assertIn(b"This item has been reunited with its owner.", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
