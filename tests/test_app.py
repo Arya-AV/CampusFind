@@ -50,6 +50,36 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_successful_item_reporting_flow(self):
+        report_data = {
+            "title": "Silver Wristwatch",
+            "category": "Accessories",
+            "item_status": "Lost",
+            "description": "Silver metallic wristwatch with black leather strap.",
+            "location": "Sports Complex Court 1",
+            "item_date": "2026-10-25",
+            "contact_name": "Rohan Gupta",
+            "contact_email": "rohan@example.com"
+        }
+        response = self.client.post("/report", data=report_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertIn(b"Your item has been reported successfully.", response.data)
+        self.assertIn(b"Silver Wristwatch", response.data)
+        self.assertIn(b"Sports Complex Court 1", response.data)
+        self.assertIn(b"Rohan Gupta", response.data)
+        self.assertIn(b"rohan@example.com", response.data)
+
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT * FROM items WHERE title = 'Silver Wristwatch'").fetchone()
+            self.assertIsNotNone(item)
+            self.assertEqual(item["category"], "Accessories")
+            self.assertEqual(item["item_status"], "Lost")
+            self.assertEqual(item["description"], "Silver metallic wristwatch with black leather strap.")
+            self.assertEqual(item["location"], "Sports Complex Court 1")
+            self.assertEqual(item["contact_name"], "Rohan Gupta")
+            self.assertEqual(item["contact_email"], "rohan@example.com")
+
 
 if __name__ == "__main__":
     unittest.main()
