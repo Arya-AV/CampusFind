@@ -46,9 +46,67 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Application routes
+
+| Route | HTTP method | Description |
+|---|---|---|
+| `/` | GET | Displays all reported items. Supports searching by title, description, or location, filtering by category and status, and sorting by date. |
+| `/item/<int:item_id>` | GET | Displays the details of a specific item. Returns a 404 page if the item does not exist. |
+| `/report` | GET | Displays the form for reporting a lost or found item. |
+| `/report` | POST | Validates the submitted item details, optionally saves an uploaded image, stores the report in the SQLite database, and redirects to its detail page. |
+| `/item/<int:item_id>/returned` | POST | Marks the specified item as returned and redirects to its detail page. |
+
+### Error handling
+
+- **404:** Displays a custom page when a requested item or route is not found.
+- **413:** Handles image uploads exceeding the configured maximum request size.
+
+## Project structure
+
+```text
+CampusFind/
+│
+├── app.py                  # Flask application, routes, database operations
+├── campusfind.db           # Local SQLite database (generated locally)
+├── requirements.txt        # Python dependencies
+├── README.md               # Project documentation
+├── CONTRIBUTING.md         # Contribution guidelines
+├── LICENSE                 # MIT License
+│
+├── templates/              # HTML templates rendered by Flask
+│   ├── base.html           # Shared page layout
+│   ├── index.html          # Homepage and item listings
+│   ├── detail.html         # Individual item details
+│   ├── report.html         # Lost/found item reporting form
+│   └── 404.html            # Custom not-found page
+│
+├── static/
+│   ├── css/
+│   │   └── styles.css      # Application styling
+│   ├── js/
+│   │   └── app.js          # Client-side JavaScript
+│   └── uploads/            # Uploaded item images
+│
+├── tests/
+│   └── test_app.py         # Automated application tests
+│
+└── .github/
+    └── pull_request_template.md
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
+
+## Running automated tests
+
+CampusFind uses Python's built-in `unittest` framework and Flask's test client.
+
+Make sure you are in the project's root directory and have activated your virtual environment.
+
+Install the project dependencies:
+
+```bash
+pip install -r requirements.txt
 
 ## Development notes
 
