@@ -1,3 +1,4 @@
+import math
 from datetime import date
 from pathlib import Path
 import sqlite3
@@ -11,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+ITEMS_PER_PAGE = 6
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-development-key"
@@ -82,29 +84,61 @@ def index():
     category = request.args.get("category", "").strip()
     status = request.args.get("status", "").strip()
     sort = request.args.get("sort", "newest")
-    query = "SELECT * FROM items WHERE 1=1"
+
+    page_arg = request.args.get("page", "1")
+    try:
+        current_page = int(page_arg)
+        if current_page < 1:
+            current_page = 1
+    except (ValueError, TypeError):
+        current_page = 1
+
+    where_clauses = ["1=1"]
     params = []
     if search:
-        query += " AND (title LIKE ? OR description LIKE ? OR location LIKE ?)"
+        where_clauses.append("(title LIKE ? OR description LIKE ? OR location LIKE ?)")
         term = f"%{search}%"
         params.extend([term, term, term])
     if category in CATEGORIES:
-        query += " AND category = ?"
+        where_clauses.append("category = ?")
         params.append(category)
     if status in STATUSES:
-        query += " AND item_status = ?"
+        where_clauses.append("item_status = ?")
         params.append(status)
-    query += " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
+
+    where_sql = " AND ".join(where_clauses)
+    order_sql = " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
+
     with get_db() as conn:
-        items = conn.execute(query, params).fetchall()
+        total_matching = conn.execute(f"SELECT COUNT(*) FROM items WHERE {where_sql}", params).fetchone()[0]
+        total_pages = max(1, math.ceil(total_matching / ITEMS_PER_PAGE))
+        if current_page > total_pages:
+            current_page = total_pages
+
+        offset = (current_page - 1) * ITEMS_PER_PAGE
+        paginated_query = f"SELECT * FROM items WHERE {where_sql}{order_sql} LIMIT ? OFFSET ?"
+        query_params = params + [ITEMS_PER_PAGE, offset]
+
+        items = conn.execute(paginated_query, query_params).fetchall()
         counts = {
             "all": conn.execute("SELECT COUNT(*) FROM items").fetchone()[0],
             "lost": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Lost'").fetchone()[0],
             "found": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Found'").fetchone()[0],
             "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
         }
-    return render_template("index.html", items=items, counts=counts, q=search,
-                           selected_category=category, selected_status=status, sort=sort)
+
+    return render_template(
+        "index.html",
+        items=items,
+        counts=counts,
+        q=search,
+        selected_category=category,
+        selected_status=status,
+        sort=sort,
+        current_page=current_page,
+        total_pages=total_pages,
+        total_items=total_matching,
+    )
 
 
 @app.route("/item/<int:item_id>")
@@ -151,6 +185,7 @@ def report_item():
             errors.append("Enter a valid contact email.")
 
         image_filename = None
+        saved_file_path = None
         image = request.files.get("image")
         if image and image.filename:
             if not allowed_file(image.filename):
@@ -166,16 +201,26 @@ def report_item():
 
         if image_filename:
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+            saved_file_path = UPLOAD_DIR / image_filename
+            image.save(saved_file_path)
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename))
+                item_id = cursor.lastrowid
+        except Exception:
+            if saved_file_path and saved_file_path.exists():
+                try:
+                    saved_file_path.unlink()
+                except OSError:
+                    pass
+            raise
+
         flash("Your item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
 
