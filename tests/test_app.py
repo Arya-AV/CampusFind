@@ -49,7 +49,37 @@ class CampusFindTests(unittest.TestCase):
         response = self.client.get("/report")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
+        def test_successful_item_report_is_saved_and_shown(self):
+        report = {
+            "title": "Lost Calculator",
+            "category": "Electronics",
+            "item_status": "Lost",
+            "description": "A scientific calculator with a blue cover.",
+            "location": "Science Building",
+            "item_date": "2026-10-25",
+            "contact_name": "Sam Student",
+            "contact_email": "sam@example.com",
+        }
 
+        response = self.client.post("/report", data=report)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].startswith("/item/"))
+
+        item_id = int(response.headers["Location"].rsplit("/", 1)[1])
+        detail_response = self.client.get(f"/item/{item_id}")
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertIn(b"Lost Calculator", detail_response.data)
+
+        with campus_app.get_db() as conn:
+            item = conn.execute(
+                "SELECT title, item_status, contact_email FROM items WHERE id = ?",
+                (item_id,),
+            ).fetchone()
+
+        self.assertEqual(item["title"], "Lost Calculator")
+        self.assertEqual(item["item_status"], "Lost")
+        self.assertEqual(item["contact_email"], "sam@example.com")
 
 if __name__ == "__main__":
     unittest.main()
