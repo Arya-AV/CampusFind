@@ -18,7 +18,22 @@
       <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
       {% if item.item_status != 'Returned' %}
       <div class="detail-note"><strong>Is this your item?</strong><p>Reach out to the contact person to coordinate a safe return.</p></div>
-      {% if item.item_status == 'Found' %}<form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned?')"><button class="button button-primary button-wide" type="submit">✓ Mark as returned</button></form>{% else %}<div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>{% endif %}
+      {% if item.item_status == 'Found' %}
+      <form id="mark-returned-form" method="post" action="{{ url_for('mark_returned', item_id=item.id) }}">
+        <button class="button button-primary button-wide" type="submit">✓ Mark as returned</button>
+      </form>
+      <dialog class="confirmation-dialog" id="return-confirmation" aria-labelledby="return-confirmation-title" aria-describedby="return-confirmation-description">
+        <div class="confirmation-content">
+          <span class="eyebrow">CONFIRM ITEM STATUS</span>
+          <h2 id="return-confirmation-title">Mark this item as returned?</h2>
+          <p id="return-confirmation-description">This will update the listing so others know the item has been reunited with its owner.</p>
+          <div class="confirmation-actions">
+            <button class="button button-secondary" id="cancel-return" type="button">Cancel</button>
+            <button class="button button-primary" id="confirm-return" type="button">Yes, mark as returned</button>
+          </div>
+        </div>
+      </dialog>
+      {% else %}<div class="detail-note muted-note">When the item is found, update the listing to let the community know.</div>{% endif %}
       {% else %}<div class="returned-banner">✓ This item has been reunited with its owner.</div>{% endif %}
     </aside>
   </div>
