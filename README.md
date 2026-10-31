@@ -46,6 +46,31 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## Running tests
+
+CampusFind uses Python's built-in `unittest` framework with isolated temporary databases.
+
+### Prerequisites
+Ensure dependencies are installed in your virtual environment:
+```bash
+pip install -r requirements.txt
+```
+
+### Run the test suite
+Execute the test runner from the repository root:
+```bash
+python -m unittest discover -s tests -v
+```
+
+### Understanding test results
+- Each test displays `... ok` when passing.
+- A final line showing `OK` confirms all tests passed.
+- A failed test will show `FAIL` or `ERROR` along with a traceback.
+
+### Troubleshooting
+- **ModuleNotFoundError: No module named 'flask'**: Make sure the virtual environment is activated before running the command.
+- **ImportError: No module named 'app'**: Ensure you are running the test command from the repository root directory.
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
