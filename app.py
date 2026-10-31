@@ -113,7 +113,9 @@ def item_detail(item_id):
         item = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
     if item is None:
         abort(404)
-    return render_template("detail.html", item=item)
+    filter_params = {k: v for k, v in request.args.items() if v and k in ("q", "category", "status", "sort")}
+    back_url = url_for("index", **filter_params) if filter_params else url_for("index")
+    return render_template("detail.html", item=item, back_url=back_url)
 
 
 @app.route("/report", methods=["GET", "POST"])

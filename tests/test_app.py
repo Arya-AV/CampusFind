@@ -50,6 +50,20 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_item_detail_preserves_back_url_with_filters(self):
+        res_index = self.client.get("/?q=Backpack&category=Bags")
+        self.assertEqual(res_index.status_code, 200)
+        self.assertIn(b"/item/1?q=Backpack&amp;category=Bags", res_index.data)
+
+        res_detail = self.client.get("/item/1?q=Backpack&category=Bags")
+        self.assertEqual(res_detail.status_code, 200)
+        self.assertIn(b'href="/?q=Backpack&amp;category=Bags"', res_detail.data)
+
+    def test_item_detail_direct_visit_has_clean_back_link(self):
+        res_detail = self.client.get("/item/1")
+        self.assertEqual(res_detail.status_code, 200)
+        self.assertIn(b'href="/"', res_detail.data)
+
 
 if __name__ == "__main__":
     unittest.main()
