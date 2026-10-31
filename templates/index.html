@@ -63,4 +63,20 @@
   <div class="empty-state"><div class="empty-icon">⌕</div><h3>No listings found</h3><p>Try another search or clear your filters to see all campus listings.</p><a class="button button-primary" href="{{ url_for('index') }}">View all listings</a></div>
   {% endif %}
 </section>
+
+<!-- JavaScript to make Escape clear and apply search -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput) {
+      searchInput.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          searchInput.value = "";
+          searchInput.closest("form").submit();
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}
