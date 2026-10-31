@@ -5,6 +5,7 @@
   <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
   <div class="form-intro"><span class="eyebrow">HELP YOUR COMMUNITY</span><h1>Report an item</h1><p>Whether you've lost something or found a belonging, sharing the details can make someone's day.</p></div>
   <form class="report-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-section-title"><span class="form-step">01</span><div><h2>Item details</h2><p>Tell us a little about the item.</p></div></div>
     <div class="form-grid">
       <label class="field field-full"><span>Item name <b>*</b></span><input name="title" maxlength="100" required placeholder="e.g. Black laptop sleeve" value="{{ form.get('title', '') }}"></label>

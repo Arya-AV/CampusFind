@@ -46,13 +46,17 @@ python app.py
 
 Open http://127.0.0.1:5000 in your browser.
 
+## CSRF protection
+
+State-changing forms use session-backed CSRF tokens. No additional package or local configuration is required. The app creates a random secret key when `SECRET_KEY` is not set; this is suitable for local development, but sessions will be invalidated when the app restarts. For a persistent deployment, set `SECRET_KEY` to a stable, private value before starting the app. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"`.
+
 ## Data and uploads
 
 The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
 
 ## Development notes
 
-This is a learning/demo project, not a production deployment. Before deploying publicly, set a secure `SECRET_KEY`, add authentication and authorization, add CSRF protection, and review contact-data privacy and upload handling.
+This is a learning/demo project, not a production deployment. Before deploying publicly, set a secure, stable `SECRET_KEY`, add authentication and authorization, and review contact-data privacy and upload handling.
 
 ## License
 

@@ -1,9 +1,12 @@
 from datetime import date
 from pathlib import Path
+import hmac
+import os
+import secrets
 import sqlite3
 import uuid
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 
@@ -13,12 +16,33 @@ UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-development-key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 CATEGORIES = ["Electronics", "ID Cards", "Bags", "Books", "Clothing", "Keys", "Accessories", "Other"]
 STATUSES = ["Lost", "Found", "Returned"]
+CSRF_SESSION_KEY = "_csrf_token"
+
+
+def generate_csrf_token():
+    token = session.get(CSRF_SESSION_KEY)
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        session[CSRF_SESSION_KEY] = token
+    return token
+
+
+@app.before_request
+def validate_csrf_token():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return
+    expected_token = session.get(CSRF_SESSION_KEY)
+    submitted_token = request.form.get("csrf_token", "")
+    if not expected_token or not submitted_token or not hmac.compare_digest(
+        expected_token, submitted_token
+    ):
+        abort(400, description="Invalid or missing CSRF token.")
 
 
 @contextmanager
@@ -73,7 +97,12 @@ def allowed_file(filename):
 
 @app.context_processor
 def inject_globals():
-    return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year}
+    return {
+        "categories": CATEGORIES,
+        "statuses": STATUSES,
+        "current_year": date.today().year,
+        "csrf_token": generate_csrf_token,
+    }
 
 
 @app.route("/")
