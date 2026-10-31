@@ -1,3 +1,6 @@
+import os
+import secrets
+import warnings
 from datetime import date, datetime, timezone
 from pathlib import Path
 import sqlite3
@@ -16,15 +19,62 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+BASE_DIR = Path(__file__).resolve().parent
+
+# Load environment variables from .env file if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    # Minimal fallback .env parser if python-dotenv is not installed
+    env_file = BASE_DIR / ".env"
+    if env_file.is_file():
+        try:
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
 from userauth import auth_bp, init_auth_db, login_required
 
-BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+
+def get_secret_key():
+    """Load Flask secret key from environment or safely generate an ephemeral key."""
+    key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY")
+    if key:
+        return key
+
+    # Handle missing secret key safely: generate an ephemeral cryptographic key
+    warnings.warn(
+        "SECRET_KEY is not set in environment or .env file. "
+        "Generated an ephemeral key for this session. "
+        "Set SECRET_KEY in your .env file or environment for persistent sessions.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return secrets.token_hex(32)
+
+
+def get_debug_mode():
+    """Determine whether debug mode is enabled from environment variables (disabled by default)."""
+    val = os.environ.get("FLASK_DEBUG", "").strip().lower()
+    return val in ("1", "true", "yes", "on", "development")
+
+
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-development-key"
+app.config["SECRET_KEY"] = get_secret_key()
+app.config["DEBUG"] = get_debug_mode()
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
@@ -373,4 +423,7 @@ def too_large(_error):
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = get_debug_mode()
+    host = os.environ.get("FLASK_RUN_HOST", os.environ.get("HOST", "127.0.0.1"))
+    port = int(os.environ.get("FLASK_RUN_PORT", os.environ.get("PORT", 5000)))
+    app.run(host=host, port=port, debug=debug_mode)

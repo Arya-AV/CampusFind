@@ -3,6 +3,7 @@ import unittest.mock
 import tempfile
 import time
 import io
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -500,6 +501,57 @@ class CampusFindTests(unittest.TestCase):
         after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
         orphaned = after_files - before_files
         self.assertEqual(len(orphaned), 0, f"Orphaned files remained on disk: {orphaned}")
+
+    def test_secret_key_loaded_from_environment(self):
+        # When SECRET_KEY is set in environment, it should be loaded
+        with unittest.mock.patch.dict(os.environ, {"SECRET_KEY": "my-custom-production-secret-1234"}):
+            key = campus_app.get_secret_key()
+            self.assertEqual(key, "my-custom-production-secret-1234")
+
+    def test_missing_secret_key_handled_safely_with_ephemeral_key(self):
+        # When neither SECRET_KEY nor FLASK_SECRET_KEY is set
+        env_without_secret = {k: v for k, v in os.environ.items() if k not in ("SECRET_KEY", "FLASK_SECRET_KEY")}
+        with unittest.mock.patch.dict(os.environ, env_without_secret, clear=True):
+            key1 = campus_app.get_secret_key()
+            key2 = campus_app.get_secret_key()
+            # Generates strong random keys
+            self.assertIsInstance(key1, str)
+            self.assertGreaterEqual(len(key1), 32)
+            # Ephemeral keys are unique and not hardcoded
+            self.assertNotEqual(key1, "change-this-development-key")
+            self.assertNotEqual(key1, key2)
+
+    def test_debug_mode_disabled_by_default(self):
+        # Default with no FLASK_DEBUG set should be False
+        env_without_debug = {k: v for k, v in os.environ.items() if k != "FLASK_DEBUG"}
+        with unittest.mock.patch.dict(os.environ, env_without_debug, clear=True):
+            self.assertFalse(campus_app.get_debug_mode())
+
+    def test_debug_mode_enabled_only_with_explicit_setting(self):
+        # True only for explicit development settings
+        for truthy in ("1", "true", "True", "TRUE", "yes", "on", "development"):
+            with unittest.mock.patch.dict(os.environ, {"FLASK_DEBUG": truthy}):
+                self.assertTrue(campus_app.get_debug_mode(), f"Expected True for {truthy}")
+
+        # False for any other or empty settings
+        for falsy in ("0", "false", "False", "no", "off", "production", "", "random"):
+            with unittest.mock.patch.dict(os.environ, {"FLASK_DEBUG": falsy}):
+                self.assertFalse(campus_app.get_debug_mode(), f"Expected False for {falsy}")
+
+    def test_source_code_has_no_hardcoded_development_secret(self):
+        # Ensure 'change-this-development-key' is never hardcoded in app.py
+        app_source_path = campus_app.BASE_DIR / "app.py"
+        with open(app_source_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertNotIn("change-this-development-key", content)
+
+    def test_gitignore_protects_env_files(self):
+        # Ensure .env is in .gitignore and .env.example exists
+        gitignore_path = campus_app.BASE_DIR / ".gitignore"
+        with open(gitignore_path, "r", encoding="utf-8") as f:
+            lines = [l.strip() for l in f.readlines()]
+        self.assertIn(".env", lines)
+        self.assertTrue((campus_app.BASE_DIR / ".env.example").is_file())
 
 
 if __name__ == "__main__":
