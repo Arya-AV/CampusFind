@@ -41,7 +41,7 @@
   <div class="items-grid">
     {% for item in items %}
     <article class="item-card">
-      <a class="item-card-link" href="{{ url_for('item_detail', item_id=item.id) }}" aria-label="View {{ item.title }}">
+      <a class="item-card-link" href="{{ url_for('item_detail', item_id=item.id, **request.args.to_dict()) }}" aria-label="View {{ item.title }}">
         <div class="item-visual {% if item.image_filename %}has-image{% else %}visual-{{ loop.index0 % 5 }}{% endif %}">
           {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}
             <span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span>
