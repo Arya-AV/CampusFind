@@ -6,7 +6,7 @@
   <div class="detail-layout">
     <section class="detail-main">
       <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
-        {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}<span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span><span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% else %}✦{% endif %}</span>{% endif %}
+        {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}<span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span><span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% elif item.category == 'Keys' %}⚿{% else %}✦{% endif %}</span>{% endif %}
       </div>
       <div class="detail-description"><span class="eyebrow">ITEM DESCRIPTION</span><h2>About this item</h2><p>{{ item.description }}</p></div>
     </section>
