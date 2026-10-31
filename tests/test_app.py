@@ -215,6 +215,132 @@ class CampusFindTests(unittest.TestCase):
             updated = conn.execute("SELECT item_status FROM items WHERE id = ?", (item_id,)).fetchone()
             self.assertEqual(updated["item_status"], "Returned")
 
+    def test_unauthenticated_cannot_mark_item_returned(self):
+        # Ensure session is clear
+        self.client.get("/auth/logout")
+
+        # Try to mark an item without logging in
+        res = self.client.post("/item/1/returned")
+        # Should redirect to login
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("auth=login", res.headers["Location"])
+
+        # Status in DB should not be changed
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT item_status FROM items WHERE id = 1").fetchone()
+            self.assertNotEqual(item["item_status"], "Returned")
+
+    def test_other_user_cannot_mark_other_peoples_lost_item(self):
+        # User A creates a lost item
+        self.register_and_login(name="User A", email="usera_lost@example.com")
+        self.client.post("/report", data={
+            "title": "User A Red Jacket",
+            "category": "Clothing",
+            "item_status": "Lost",
+            "description": "Warm red winter jacket.",
+            "location": "Locker Room",
+            "item_date": "2026-10-28",
+            "contact_name": "User A",
+            "contact_email": "usera_lost@example.com",
+        })
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'User A Red Jacket'").fetchone()
+            item_id = item["id"]
+
+        # User B logs in
+        self.client.get("/auth/logout")
+        self.register_and_login(name="User B Attacker", email="userb_lost@example.com")
+
+        # 1. Frontend check: User B does NOT see the mark button
+        detail_res = self.client.get(f"/item/{item_id}")
+        self.assertNotIn(b"Mark as recovered / found", detail_res.data)
+        self.assertNotIn(b"Mark as returned", detail_res.data)
+        self.assertIn(b"Only the person who posted this listing can update or close it", detail_res.data)
+
+        # 2. Backend check: User B sends POST /item/<item_id>/returned directly
+        post_res = self.client.post(f"/item/{item_id}/returned")
+        # Must be rejected with 403 Forbidden!
+        self.assertEqual(post_res.status_code, 403)
+        self.assertIn(b"Access Denied (403)", post_res.data)
+
+        # 3. Database check: Item status is STILL Lost!
+        with campus_app.get_db() as conn:
+            check_item = conn.execute("SELECT item_status FROM items WHERE id = ?", (item_id,)).fetchone()
+            self.assertEqual(check_item["item_status"], "Lost")
+
+    def test_other_user_cannot_mark_other_peoples_found_item(self):
+        # User A creates a found item
+        self.register_and_login(name="User A Finder", email="usera_found@example.com")
+        self.client.post("/report", data={
+            "title": "User A Found Keychain",
+            "category": "Keys",
+            "item_status": "Found",
+            "description": "Found near north gate.",
+            "location": "North Gate",
+            "item_date": "2026-10-28",
+            "contact_name": "User A",
+            "contact_email": "usera_found@example.com",
+        })
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'User A Found Keychain'").fetchone()
+            item_id = item["id"]
+
+        # User B logs in
+        self.client.get("/auth/logout")
+        self.register_and_login(name="User B Meddler", email="userb_found@example.com")
+
+        # 1. Frontend check: User B does NOT see the mark button
+        detail_res = self.client.get(f"/item/{item_id}")
+        self.assertNotIn(b"Mark as returned", detail_res.data)
+        self.assertIn(b"Only the person who posted this listing can update or close it", detail_res.data)
+
+        # 2. Backend check: User B sends POST /item/<item_id>/returned directly
+        post_res = self.client.post(f"/item/{item_id}/returned")
+        # Must be rejected with 403 Forbidden!
+        self.assertEqual(post_res.status_code, 403)
+        self.assertIn(b"Access Denied (403)", post_res.data)
+
+        # 3. Database check: Item status is STILL Found!
+        with campus_app.get_db() as conn:
+            check_item = conn.execute("SELECT item_status FROM items WHERE id = ?", (item_id,)).fetchone()
+            self.assertEqual(check_item["item_status"], "Found")
+
+    def test_owner_can_mark_own_found_post_as_returned(self):
+        # User A creates a found item
+        self.register_and_login(name="Finder User", email="finder@example.com")
+        self.client.post("/report", data={
+            "title": "Finder Found Headphones",
+            "category": "Electronics",
+            "item_status": "Found",
+            "description": "Found in cafeteria.",
+            "location": "Cafeteria",
+            "item_date": "2026-10-29",
+            "contact_name": "Finder User",
+            "contact_email": "finder@example.com",
+        })
+        with campus_app.get_db() as conn:
+            item = conn.execute("SELECT id FROM items WHERE title = 'Finder Found Headphones'").fetchone()
+            item_id = item["id"]
+
+        # Owner views detail page: button IS present
+        detail_res = self.client.get(f"/item/{item_id}")
+        self.assertIn(b"Mark as returned", detail_res.data)
+
+        # Owner marks returned
+        rec_res = self.client.post(f"/item/{item_id}/returned", follow_redirects=True)
+        self.assertEqual(rec_res.status_code, 200)
+        self.assertIn(b"Item marked as returned", rec_res.data)
+
+        with campus_app.get_db() as conn:
+            check_item = conn.execute("SELECT item_status FROM items WHERE id = ?", (item_id,)).fetchone()
+            self.assertEqual(check_item["item_status"], "Returned")
+
+    def test_cannot_mark_unassigned_sample_post(self):
+        self.register_and_login(name="Random User", email="random@example.com")
+        # Item 1 is seeded sample item without user_id
+        res = self.client.post("/item/1/returned")
+        self.assertEqual(res.status_code, 403)
+
     def test_my_listings_filter(self):
         self.register_and_login(name="Eva", email="eva@example.com")
         self.client.post("/report", data={

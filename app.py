@@ -319,25 +319,32 @@ def report_item():
 
 
 @app.route("/item/<int:item_id>/returned", methods=["POST"])
+@login_required
 def mark_returned(item_id):
-    current_user = getattr(g, "user", None)
+    current_user = g.user
     with get_db() as conn:
         item = conn.execute("SELECT id, item_status, user_id FROM items WHERE id = ?", (item_id,)).fetchone()
         if item is None:
             abort(404)
 
-        is_owner = bool(current_user and item["user_id"] == current_user["id"])
+        # STRICT AUTHORIZATION: Only the user who created this post can update it!
+        if item["user_id"] is None or item["user_id"] != current_user["id"]:
+            abort(403)
 
-        # Allow marking returned if item is Found, or if the current user is the owner
         if item["item_status"] != "Returned":
             conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
 
-    if item["item_status"] == "Lost" and is_owner:
+    if item["item_status"] == "Lost":
         flash("Great news! Your lost item has been marked as recovered.", "success")
     else:
         flash("Item marked as returned. Great news!", "success")
 
     return redirect(url_for("item_detail", item_id=item_id))
+
+
+@app.errorhandler(403)
+def forbidden(_error):
+    return render_template("403.html"), 403
 
 
 @app.errorhandler(404)

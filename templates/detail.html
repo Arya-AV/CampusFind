@@ -45,27 +45,30 @@
       </div>
 
       {% if item.item_status != 'Returned' %}
-        {% if not is_owner %}
+        {% if is_owner %}
+          {% if item.item_status == 'Found' %}
+            <div class="detail-note">
+              <strong>Has this found item been returned to its owner?</strong>
+              <p>As the finder, you can mark this listing as returned to close it.</p>
+            </div>
+            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned to owner?')">
+              <button class="button button-primary button-wide" type="submit">✓ Mark as returned</button>
+            </form>
+          {% else %}
+            <div class="detail-note">
+              <strong>Did you recover or find your lost item?</strong>
+              <p>You can close this listing by marking it as recovered / found.</p>
+            </div>
+            <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this lost item as recovered/found?')">
+              <button class="button button-primary button-wide" type="submit">✓ Mark as recovered / found</button>
+            </form>
+          {% endif %}
+        {% else %}
           <div class="detail-note">
             <strong>Is this your item?</strong>
             <p>Reach out to the contact person to coordinate a safe return.</p>
           </div>
-        {% endif %}
-
-        {% if item.item_status == 'Found' %}
-          <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this item as returned?')">
-            <button class="button button-primary button-wide" type="submit">✓ Mark as returned</button>
-          </form>
-        {% elif is_owner %}
-          <div class="detail-note">
-            <strong>Did you recover or find this item?</strong>
-            <p>You can close this listing by marking it as recovered / found.</p>
-          </div>
-          <form method="post" action="{{ url_for('mark_returned', item_id=item.id) }}" onsubmit="return confirm('Mark this lost item as recovered/found?')">
-            <button class="button button-primary button-wide" type="submit">✓ Mark as recovered / found</button>
-          </form>
-        {% else %}
-          <div class="detail-note muted-note">When the owner recovers this item, they can mark it as resolved.</div>
+          <div class="detail-note muted-note">Only the person who posted this listing can update or close it.</div>
         {% endif %}
       {% else %}
         <div class="returned-banner">✓ This item has been reunited with its owner.</div>
