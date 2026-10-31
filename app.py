@@ -168,16 +168,26 @@ def report_item():
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
             image.save(UPLOAD_DIR / image_filename)
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
-        flash("Your item has been reported successfully.", "success")
-        return redirect(url_for("item_detail", item_id=item_id))
+        try:
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename))
+                item_id = cursor.lastrowid
+            flash("Your item has been reported successfully.", "success")
+            return redirect(url_for("item_detail", item_id=item_id))
+        except Exception:
+            # If the database crashes, delete the image we just saved to the hard drive
+            if image_filename:
+                failed_image_path = UPLOAD_DIR / image_filename
+                if failed_image_path.exists():
+                    failed_image_path.unlink()
+            
+            flash("A database error occurred while reporting. Upload cancelled.", "error")
+            return render_template("report.html", form=request.form, today=date.today().isoformat())
 
     return render_template("report.html", form={}, today=date.today().isoformat())
 
