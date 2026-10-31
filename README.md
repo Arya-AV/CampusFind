@@ -23,37 +23,3 @@ CampusFind is a campus lost-and-found portal built with Python, Flask, SQLite, H
 
 ```bash
 python -m venv .venv
-```
-
-Activate the environment:
-
-**Windows**
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-**macOS/Linux**
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies and run:
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
-
-Open http://127.0.0.1:5000 in your browser.
-
-## Data and uploads
-
-The local SQLite database (`campusfind.db`) and uploaded images are generated locally. They are excluded from Git. The app seeds four sample listings on its first run.
-
-## Development notes
-
-This is a learning/demo project, not a production deployment. Before deploying publicly, set a secure `SECRET_KEY`, add authentication and authorization, add CSRF protection, and review contact-data privacy and upload handling.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
