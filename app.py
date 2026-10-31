@@ -19,6 +19,8 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 CATEGORIES = ["Electronics", "ID Cards", "Bags", "Books", "Clothing", "Keys", "Accessories", "Other"]
 STATUSES = ["Lost", "Found", "Returned"]
+SORT_OPTIONS = ["newest", "oldest"]
+DEFAULT_SORT = "newest"
 
 
 @contextmanager
@@ -71,6 +73,29 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def get_listing_filters(args):
+    """Return the valid search, category, status and sort options from a query string.
+
+    Missing, blank or unknown values are left out, and the default sort is
+    omitted, so the result can be passed straight to url_for() to rebuild a
+    clean listings URL.
+    """
+    filters = {}
+    search = args.get("q", "").strip()
+    if search:
+        filters["q"] = search
+    category = args.get("category", "").strip()
+    if category in CATEGORIES:
+        filters["category"] = category
+    status = args.get("status", "").strip()
+    if status in STATUSES:
+        filters["status"] = status
+    sort = args.get("sort", "").strip()
+    if sort in SORT_OPTIONS and sort != DEFAULT_SORT:
+        filters["sort"] = sort
+    return filters
+
+
 @app.context_processor
 def inject_globals():
     return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year}
@@ -78,20 +103,21 @@ def inject_globals():
 
 @app.route("/")
 def index():
-    search = request.args.get("q", "").strip()
-    category = request.args.get("category", "").strip()
-    status = request.args.get("status", "").strip()
-    sort = request.args.get("sort", "newest")
+    filters = get_listing_filters(request.args)
+    search = filters.get("q", "")
+    category = filters.get("category", "")
+    status = filters.get("status", "")
+    sort = filters.get("sort", DEFAULT_SORT)
     query = "SELECT * FROM items WHERE 1=1"
     params = []
     if search:
         query += " AND (title LIKE ? OR description LIKE ? OR location LIKE ?)"
         term = f"%{search}%"
         params.extend([term, term, term])
-    if category in CATEGORIES:
+    if category:
         query += " AND category = ?"
         params.append(category)
-    if status in STATUSES:
+    if status:
         query += " AND item_status = ?"
         params.append(status)
     query += " ORDER BY item_date " + ("ASC" if sort == "oldest" else "DESC") + ", id DESC"
@@ -104,7 +130,8 @@ def index():
             "returned": conn.execute("SELECT COUNT(*) FROM items WHERE item_status='Returned'").fetchone()[0],
         }
     return render_template("index.html", items=items, counts=counts, q=search,
-                           selected_category=category, selected_status=status, sort=sort)
+                           selected_category=category, selected_status=status, sort=sort,
+                           listing_filters=filters)
 
 
 @app.route("/item/<int:item_id>")
@@ -113,7 +140,8 @@ def item_detail(item_id):
         item = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
     if item is None:
         abort(404)
-    return render_template("detail.html", item=item)
+    return render_template("detail.html", item=item,
+                           listing_filters=get_listing_filters(request.args))
 
 
 @app.route("/report", methods=["GET", "POST"])
@@ -191,7 +219,7 @@ def mark_returned(item_id):
         if item["item_status"] != "Returned":
             conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
     flash("Item marked as returned. Great news!", "success")
-    return redirect(url_for("item_detail", item_id=item_id))
+    return redirect(url_for("item_detail", item_id=item_id, **get_listing_filters(request.args)))
 
 
 @app.errorhandler(404)
