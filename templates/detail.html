@@ -14,6 +14,9 @@
       <span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span>
       <span class="detail-category">{{ item.category }} <span>·</span> Posted {{ item.item_date }}</span>
       <h1>{{ item.title }}</h1>
+      <button class="button button-primary" type="button" onclick="window.print()">
+  🖨 Print Item Details
+</button>
       <div class="detail-info"><span class="info-icon">⌖</span><div><small>LAST SEEN / FOUND AT</small><strong>{{ item.location }}</strong></div></div>
       <div class="detail-info"><span class="info-icon">♙</span><div><small>CONTACT PERSON</small><strong>{{ item.contact_name }}</strong><a href="mailto:{{ item.contact_email }}">{{ item.contact_email }}</a></div></div>
       {% if item.item_status != 'Returned' %}
