@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 import sqlite3
 import uuid
+import os
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
 from werkzeug.utils import secure_filename
@@ -13,7 +14,8 @@ UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-development-key"
+# Pulls the secret key from the environment, or uses a default for local testing
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-development-key")
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
