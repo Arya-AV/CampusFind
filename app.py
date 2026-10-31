@@ -107,13 +107,16 @@ def index():
                            selected_category=category, selected_status=status, sort=sort)
 
 
-@app.route("/item/<int:item_id>")
-def item_detail(item_id):
-    with get_db() as conn:
-        item = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
-    if item is None:
-        abort(404)
-    return render_template("detail.html", item=item)
+@app.route('/item/<int:item_id>')
+def detail(item_id):
+    item = get_item_by_id(item_id) 
+    
+    q = request.args.get('q', '')
+    category = request.args.get('category', '')
+    status = request.args.get('status', '')
+    sort = request.args.get('sort', '')
+    
+    return render_template('detail.html', item=item, q=q, category=category, status=status, sort=sort)
 
 
 @app.route("/report", methods=["GET", "POST"])
