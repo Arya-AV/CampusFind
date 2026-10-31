@@ -8,6 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // The Print button is hidden in the HTML and only shown when printing is available.
+  if (typeof window.print === "function") {
+    document.querySelectorAll("[data-print-page]").forEach((button) => {
+      button.hidden = false;
+      button.addEventListener("click", () => window.print());
+    });
+  }
+
   document.querySelectorAll(".flash").forEach((message) => {
     window.setTimeout(() => {
       message.classList.add("flash-hide");

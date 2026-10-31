@@ -2,10 +2,13 @@
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
 <div class="detail-page">
-  <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+  <div class="detail-toolbar">
+    <a class="back-link" href="{{ url_for('index') }}">← Back to listings</a>
+    <button class="button button-secondary" type="button" data-print-page hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Print details</button>
+  </div>
   <div class="detail-layout">
     <section class="detail-main">
-      <div class="detail-visual {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
+      <div class="detail-visual {% if item.image_filename %}has-image{% else %}visual-{{ item.id % 5 }}{% endif %}">
         {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="{{ item.title }}">{% else %}<span class="visual-shape shape-a"></span><span class="visual-shape shape-b"></span><span class="placeholder-symbol">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% else %}✦{% endif %}</span>{% endif %}
       </div>
       <div class="detail-description"><span class="eyebrow">ITEM DESCRIPTION</span><h2>About this item</h2><p>{{ item.description }}</p></div>
