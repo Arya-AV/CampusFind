@@ -181,15 +181,31 @@ def report_item():
 
     return render_template("report.html", form={}, today=date.today().isoformat())
 
-
 @app.route("/item/<int:item_id>/returned", methods=["POST"])
 def mark_returned(item_id):
     with get_db() as conn:
-        item = conn.execute("SELECT id, item_status FROM items WHERE id = ?", (item_id,)).fetchone()
+        item = conn.execute(
+            "SELECT id, item_status FROM items WHERE id = ?",
+            (item_id,)
+        ).fetchone()
+
         if item is None:
             abort(404)
+
+        # Add this check: Lost items cannot be marked as returned.
+        if item["item_status"] == "Lost":
+            flash(
+                "A lost item cannot be marked as returned until it has been found.",
+                "error"
+            )
+            return redirect(url_for("item_detail", item_id=item_id))
+
         if item["item_status"] != "Returned":
-            conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
+            conn.execute(
+                "UPDATE items SET item_status='Returned' WHERE id=?",
+                (item_id,)
+            )
+
     flash("Item marked as returned. Great news!", "success")
     return redirect(url_for("item_detail", item_id=item_id))
 
