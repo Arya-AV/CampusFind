@@ -23,4 +23,10 @@
     </aside>
   </div>
 </div>
+<!-- ADD THIS FOR RECENTLY VIEWED TRACKING -->
+<div id="item-metadata" style="display: none;"
+     data-id="{{ item.id }}" 
+     data-title="{{ item.title }}" 
+     data-image="{% if item.image_filename %}{{ url_for('static', filename='uploads/' ~ item.image_filename) }}{% else %}none{% endif %}">
+</div>
 {% endblock %}
