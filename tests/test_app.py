@@ -462,7 +462,7 @@ class CampusFindTests(unittest.TestCase):
         self.register_and_login(name="Image Test User", email="imagetest@example.com")
 
         # Dummy valid PNG bytes
-        image_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
+        image_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
         upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
         before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
 
@@ -552,6 +552,211 @@ class CampusFindTests(unittest.TestCase):
             lines = [l.strip() for l in f.readlines()]
         self.assertIn(".env", lines)
         self.assertTrue((campus_app.BASE_DIR / ".env.example").is_file())
+
+
+
+    # --- Tests for Image Content Validation ---
+
+    def _create_sample_image_bytes(self, fmt="PNG"):
+        from PIL import Image
+        buf = io.BytesIO()
+        img = Image.new("RGB", (10, 10), color="blue")
+        img.save(buf, format=fmt)
+        return buf.getvalue()
+
+    def test_accept_valid_images_all_supported_formats(self):
+        """Verify that genuine images in all supported formats (PNG, JPG, JPEG, GIF, WEBP) are accepted and saved."""
+        self.register_and_login(name="Valid Image User", email="validimg@example.com")
+        upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
+
+        format_cases = [
+            ("PNG", "item_test.png"),
+            ("JPEG", "item_test.jpg"),
+            ("JPEG", "item_test.jpeg"),
+            ("GIF", "item_test.gif"),
+            ("WEBP", "item_test.webp"),
+        ]
+
+        for fmt, filename in format_cases:
+            img_bytes = self._create_sample_image_bytes(fmt)
+            before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+
+            res = self.client.post("/report", data={
+                "title": f"Valid {fmt} Item",
+                "category": "Electronics",
+                "item_status": "Lost",
+                "description": f"Valid {fmt} image test description.",
+                "location": "Lab 1",
+                "item_date": "2026-10-30",
+                "contact_name": "Valid Image User",
+                "contact_email": "validimg@example.com",
+                "image": (io.BytesIO(img_bytes), filename),
+            }, follow_redirects=False)
+
+            # Successfully redirected to item detail page
+            self.assertEqual(res.status_code, 302, f"Failed for format {fmt} with filename {filename}")
+            item_detail_url = res.headers["Location"]
+
+            # Confirm file was stored on disk
+            after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+            new_files = after_files - before_files
+            self.assertEqual(len(new_files), 1, f"Image was not saved to disk for {filename}")
+
+            # Verify image file is shown on item detail page
+            detail_res = self.client.get(item_detail_url)
+            self.assertEqual(detail_res.status_code, 200)
+            saved_filename = list(new_files)[0].name
+            self.assertIn(saved_filename.encode("utf-8"), detail_res.data)
+
+            # Cleanup test file
+            for f in new_files:
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
+
+    def test_reject_text_file_renamed_to_allowed_extension(self):
+        """Verify that a text file renamed with an allowed extension (.png) is rejected and not saved to disk."""
+        self.register_and_login(name="Text File User", email="textfile@example.com")
+        upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
+        before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+
+        with campus_app.get_db() as conn:
+            item_count_before = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+
+        fake_text_image = b"Hello, this is merely a text file renamed to photo.png."
+
+        res = self.client.post("/report", data={
+            "title": "Fake Image Item",
+            "category": "Electronics",
+            "item_status": "Lost",
+            "description": "Item with disguised text file as image.",
+            "location": "Library",
+            "item_date": "2026-10-30",
+            "contact_name": "Text File User",
+            "contact_email": "textfile@example.com",
+            "image": (io.BytesIO(fake_text_image), "photo.png"),
+        }, follow_redirects=True)
+
+        # Must not redirect to detail; should render form with flash error
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"not a valid image", res.data.lower())
+
+        # Ensure rejected file is NOT saved in uploads directory
+        after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+        orphaned = after_files - before_files
+        self.assertEqual(len(orphaned), 0, f"Rejected file was saved to disk: {orphaned}")
+
+        # Ensure no listing was created in the database
+        with campus_app.get_db() as conn:
+            item_count_after = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+            self.assertEqual(item_count_after, item_count_before)
+
+    def test_reject_disguised_non_image_files(self):
+        """Verify that HTML, corrupted headers, empty files, and binary archives are rejected."""
+        self.register_and_login(name="Disguise Tester", email="disguise@example.com")
+        upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
+
+        disguised_payloads = [
+            (b"<!DOCTYPE html><html><script>alert(\'xss\')</script></html>", "script.jpg"),
+            (b"GIF89a NOT A REAL GIF DATA STREAM", "corrupted.gif"),
+            (b"", "empty.webp"),
+            (b"PK\x03\x04\x14\x00\x00\x00\x08\x00ArchiveFakeContent", "archive.png"),
+            (b"MZ\x90\x00\x03\x00\x00\x00\x04\x00ExecutableContent", "malware.jpeg"),
+        ]
+
+        for payload, filename in disguised_payloads:
+            before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+
+            res = self.client.post("/report", data={
+                "title": "Disguised Item",
+                "category": "Books",
+                "item_status": "Found",
+                "description": "Testing rejection of disguised non-image file.",
+                "location": "Hallway",
+                "item_date": "2026-10-30",
+                "contact_name": "Disguise Tester",
+                "contact_email": "disguise@example.com",
+                "image": (io.BytesIO(payload), filename),
+            }, follow_redirects=True)
+
+            self.assertEqual(res.status_code, 200, f"Expected 200 re-render for {filename}")
+            self.assertIn(b"not a valid image", res.data.lower())
+
+            after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+            self.assertEqual(len(after_files - before_files), 0, f"Rejected file was saved to disk for {filename}")
+
+    def test_reject_mismatched_image_format_and_extension(self):
+        """Verify that a valid JPEG renamed to .png (or valid PNG renamed to .gif) is rejected."""
+        self.register_and_login(name="Mismatch User", email="mismatch@example.com")
+        upload_folder = Path(campus_app.app.config["UPLOAD_FOLDER"])
+        before_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+
+        # Real JPEG content disguised as .png
+        real_jpeg_bytes = self._create_sample_image_bytes("JPEG")
+
+        res = self.client.post("/report", data={
+            "title": "Mismatched Ext Item",
+            "category": "Accessories",
+            "item_status": "Lost",
+            "description": "JPEG disguised with PNG extension.",
+            "location": "Cafeteria",
+            "item_date": "2026-10-30",
+            "contact_name": "Mismatch User",
+            "contact_email": "mismatch@example.com",
+            "image": (io.BytesIO(real_jpeg_bytes), "disguised_photo.png"),
+        }, follow_redirects=True)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"not a valid image", res.data.lower())
+
+        after_files = set(upload_folder.glob("*")) if upload_folder.exists() else set()
+        self.assertEqual(len(after_files - before_files), 0)
+
+    def test_preserve_existing_5mb_size_limit_and_error_handling(self):
+        """Verify that files exceeding MAX_CONTENT_LENGTH (5 MB) are rejected with standard 413 handling."""
+        self.register_and_login(name="Oversize User", email="oversize@example.com")
+
+        # 5 MB + 1 KB payload
+        oversized_data = b"0" * (5 * 1024 * 1024 + 1024)
+
+        res = self.client.post("/report", data={
+            "title": "Huge File Item",
+            "category": "Bags",
+            "item_status": "Lost",
+            "description": "Oversized upload test.",
+            "location": "Sports Complex",
+            "item_date": "2026-10-30",
+            "contact_name": "Oversize User",
+            "contact_email": "oversize@example.com",
+            "image": (io.BytesIO(oversized_data), "too_large.png"),
+        }, follow_redirects=True)
+
+        self.assertIn(b"Maximum upload size is 5 MB", res.data)
+
+    def test_allowed_file_and_validate_image_helpers(self):
+        """Unit test allowed_file and validate_image directly for edge cases."""
+        # Extension checks
+        self.assertTrue(campus_app.allowed_file("valid.png"))
+        self.assertTrue(campus_app.allowed_file("PHOTO.JPG"))
+        self.assertTrue(campus_app.allowed_file("sample.webp"))
+        self.assertFalse(campus_app.allowed_file("document.pdf"))
+        self.assertFalse(campus_app.allowed_file("script.py"))
+        self.assertFalse(campus_app.allowed_file("no_extension"))
+
+        # Valid image stream
+        valid_png = io.BytesIO(self._create_sample_image_bytes("PNG"))
+        self.assertTrue(campus_app.validate_image(valid_png, "png"))
+        self.assertTrue(campus_app.allowed_file("valid.png", valid_png))
+
+        # Stream rewind verification: stream can be read after validate_image
+        self.assertEqual(valid_png.tell(), 0)
+
+        # Invalid stream
+        fake_stream = io.BytesIO(b"not an image")
+        self.assertFalse(campus_app.validate_image(fake_stream, "png"))
+        self.assertFalse(campus_app.allowed_file("fake.png", fake_stream))
+        self.assertFalse(campus_app.validate_image(None))
 
 
 if __name__ == "__main__":

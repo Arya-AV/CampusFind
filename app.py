@@ -47,6 +47,12 @@ from userauth import auth_bp, init_auth_db, login_required
 DATABASE = BASE_DIR / "campusfind.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+SUPPORTED_IMAGE_FORMATS = {
+    "PNG": {"png"},
+    "JPEG": {"jpg", "jpeg"},
+    "GIF": {"gif"},
+    "WEBP": {"webp"},
+}
 
 
 def get_secret_key():
@@ -167,8 +173,88 @@ def init_db():
             """, examples)
 
 
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+def validate_image(stream, ext=None):
+    """Validate that the stream contains real, valid image data in allowed formats."""
+    if stream is None:
+        return False
+
+    pos = None
+    if hasattr(stream, "tell"):
+        try:
+            pos = stream.tell()
+        except (OSError, ValueError):
+            pos = None
+
+    try:
+        if hasattr(stream, "seek"):
+            stream.seek(0)
+
+        try:
+            from PIL import Image
+            has_pil = True
+        except ImportError:
+            has_pil = False
+
+        if has_pil:
+            img = Image.open(stream)
+            img.verify()
+            detected_format = (img.format or "").upper()
+            if detected_format not in SUPPORTED_IMAGE_FORMATS:
+                return False
+            if ext is not None:
+                clean_ext = ext.lstrip(".").lower()
+                if clean_ext not in SUPPORTED_IMAGE_FORMATS[detected_format]:
+                    return False
+            return True
+        else:
+            # Fallback magic header verification if Pillow is not available
+            header = stream.read(32)
+            detected_format = None
+            if header.startswith(b"\x89PNG\r\n\x1a\n"):
+                detected_format = "PNG"
+            elif header.startswith(b"\xff\xd8\xff"):
+                detected_format = "JPEG"
+            elif header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+                detected_format = "GIF"
+            elif header.startswith(b"RIFF") and len(header) >= 12 and header[8:12] == b"WEBP":
+                detected_format = "WEBP"
+
+            if not detected_format:
+                return False
+
+            if ext is not None:
+                clean_ext = ext.lstrip(".").lower()
+                if clean_ext not in SUPPORTED_IMAGE_FORMATS[detected_format]:
+                    return False
+            return True
+    except Exception:
+        return False
+    finally:
+        if hasattr(stream, "seek") and pos is not None:
+            try:
+                stream.seek(pos)
+            except (OSError, ValueError):
+                pass
+
+
+def allowed_file(filename_or_file, stream=None):
+    if hasattr(filename_or_file, "filename"):
+        filename = filename_or_file.filename
+        stream = getattr(filename_or_file, "stream", None)
+    else:
+        filename = filename_or_file
+
+    if not filename or "." not in filename:
+        return False
+
+    ext = filename.rsplit(".", 1)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+
+    if stream is not None:
+        return validate_image(stream, ext)
+
+    return True
 
 
 @app.context_processor
@@ -331,10 +417,12 @@ def report_item():
         image_filename = None
         image = request.files.get("image")
         if image and image.filename:
+            suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower() if "." in image.filename else ""
             if not allowed_file(image.filename):
                 errors.append("Image must be PNG, JPG, JPEG, GIF, or WEBP.")
+            elif not validate_image(image.stream, suffix):
+                errors.append("The uploaded file is not a valid image. Image must be PNG, JPG, JPEG, GIF, or WEBP.")
             else:
-                suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower()
                 image_filename = f"{uuid.uuid4().hex}.{suffix}"
 
         if errors:
