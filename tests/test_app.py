@@ -50,6 +50,25 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
 
+    def test_invalid_category_parameter_handled_safely(self):
+        response = self.client.get("/?category=NonExistentCategory")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Explore listings", response.data)
+        self.assertIn(b"Black Backpack", response.data)
+
+    def test_invalid_status_parameter_handled_safely(self):
+        response = self.client.get("/?status=UnknownStatus")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Explore listings", response.data)
+        self.assertIn(b"Black Backpack", response.data)
+
+    def test_invalid_sort_parameter_falls_back_to_newest(self):
+        response = self.client.get("/?sort=invalid_sort_val")
+        self.assertEqual(response.status_code, 200)
+        pos_bottle = response.data.find(b"Blue Water Bottle")
+        pos_backpack = response.data.find(b"Black Backpack")
+        self.assertTrue(pos_bottle < pos_backpack)
+
 
 if __name__ == "__main__":
     unittest.main()
