@@ -4,6 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
     search.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         search.value = "";
+        if (search.form) {
+          search.form.submit();
+        }
       }
     });
   }
