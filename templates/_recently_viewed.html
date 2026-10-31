@@ -1,0 +1,14 @@
+{# Cards for the homepage's Recently viewed section, loaded by static/js/app.js. #}
+{% for item in items %}
+<li data-item-id="{{ item.id }}">
+  <a class="recent-card" href="{{ url_for('item_detail', item_id=item.id) }}">
+    <span class="recent-thumb {% if not item.image_filename %}visual-{{ item.id % 5 }}{% endif %}">
+      {% if item.image_filename %}<img src="{{ url_for('static', filename='uploads/' ~ item.image_filename) }}" alt="" loading="lazy">{% else %}<span class="placeholder-symbol" aria-hidden="true">{% if item.category == 'Bags' %}▣{% elif item.category == 'Electronics' %}⌁{% elif item.category == 'ID Cards' %}▤{% elif item.category == 'Books' %}▥{% elif item.category == 'Keys' %}⚿{% else %}✦{% endif %}</span>{% endif %}
+    </span>
+    <span class="recent-info">
+      <strong>{{ item.title }}</strong>
+      <span class="recent-meta"><span class="status-pill status-{{ item.item_status|lower }}">{{ item.item_status }}</span><span>{{ item.category }}</span></span>
+    </span>
+  </a>
+</li>
+{% endfor %}

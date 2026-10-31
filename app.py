@@ -19,6 +19,7 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 CATEGORIES = ["Electronics", "ID Cards", "Bags", "Books", "Clothing", "Keys", "Accessories", "Other"]
 STATUSES = ["Lost", "Found", "Returned"]
+RECENTLY_VIEWED_LIMIT = 6
 
 
 @contextmanager
@@ -71,9 +72,29 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def parse_item_ids(raw, limit):
+    """Turn a comma-separated string such as "5,3,5,x" into unique item IDs.
+
+    Invalid parts are skipped, the original order is kept and at most `limit`
+    IDs are returned.
+    """
+    ids = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not (part.isascii() and part.isdigit() and len(part) <= 18):
+            continue
+        item_id = int(part)
+        if item_id > 0 and item_id not in ids:
+            ids.append(item_id)
+            if len(ids) == limit:
+                break
+    return ids
+
+
 @app.context_processor
 def inject_globals():
-    return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year}
+    return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year,
+            "recently_viewed_limit": RECENTLY_VIEWED_LIMIT}
 
 
 @app.route("/")
@@ -105,6 +126,29 @@ def index():
         }
     return render_template("index.html", items=items, counts=counts, q=search,
                            selected_category=category, selected_status=status, sort=sort)
+
+
+@app.route("/recently-viewed")
+def recently_viewed():
+    """Return the cards for the homepage's Recently viewed section.
+
+    The browser keeps the viewing history and sends the item IDs here. Items
+    that no longer exist are left out, and the rest keep the order they were
+    sent in (most recent first).
+    """
+    ids = parse_item_ids(request.args.get("ids", ""), RECENTLY_VIEWED_LIMIT)
+    items = []
+    if ids:
+        placeholders = ",".join("?" * len(ids))
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT id, title, category, item_status, image_filename FROM items "
+                f"WHERE id IN ({placeholders})",
+                ids,
+            ).fetchall()
+        rows_by_id = {row["id"]: row for row in rows}
+        items = [rows_by_id[item_id] for item_id in ids if item_id in rows_by_id]
+    return render_template("_recently_viewed.html", items=items)
 
 
 @app.route("/item/<int:item_id>")
