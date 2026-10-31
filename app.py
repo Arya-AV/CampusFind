@@ -1,3 +1,4 @@
+from PIL import Image, UnidentifiedImageError
 from datetime import date
 from pathlib import Path
 import sqlite3
@@ -71,6 +72,38 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def validate_image(image):
+    """Validate the actual image content, not just its filename."""
+    if not image or not image.filename:
+        return False
+
+    extension = image.filename.rsplit(".", 1)[1].lower()
+
+    format_by_extension = {
+        "jpg": "JPEG",
+        "jpeg": "JPEG",
+        "png": "PNG",
+        "gif": "GIF",
+        "webp": "WEBP",
+    }
+
+    try:
+        image.stream.seek(0)
+
+        with Image.open(image.stream) as img:
+            if img.format != format_by_extension.get(extension):
+                return False
+
+            img.verify()
+
+        image.stream.seek(0)
+        return True
+
+    except (UnidentifiedImageError, OSError, ValueError):
+        image.stream.seek(0)
+        return False
+
+
 @app.context_processor
 def inject_globals():
     return {"categories": CATEGORIES, "statuses": STATUSES, "current_year": date.today().year}
@@ -117,6 +150,8 @@ def item_detail(item_id):
 
 
 @app.route("/report", methods=["GET", "POST"])
+
+
 def report_item():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -129,6 +164,7 @@ def report_item():
         contact_email = request.form.get("contact_email", "").strip()
 
         errors = []
+
         if not title or len(title) > 100:
             errors.append("Enter a title between 1 and 100 characters.")
         if category not in CATEGORIES:
@@ -139,12 +175,14 @@ def report_item():
             errors.append("Enter a description (up to 1,000 characters).")
         if not location or len(location) > 120:
             errors.append("Enter a location (up to 120 characters).")
+
         try:
             parsed_date = date.fromisoformat(item_date)
             if parsed_date > date.today():
                 errors.append("The item date cannot be in the future.")
         except ValueError:
             errors.append("Enter a valid item date.")
+
         if not contact_name or len(contact_name) > 80:
             errors.append("Enter your name (up to 80 characters).")
         if not contact_email or "@" not in contact_email or len(contact_email) > 120:
@@ -152,9 +190,14 @@ def report_item():
 
         image_filename = None
         image = request.files.get("image")
+
         if image and image.filename:
             if not allowed_file(image.filename):
                 errors.append("Image must be PNG, JPG, JPEG, GIF, or WEBP.")
+            elif not validate_image(image):
+                errors.append(
+                    "Uploaded file is not a valid image or its extension does not match its content."
+                )
             else:
                 suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower()
                 image_filename = f"{uuid.uuid4().hex}.{suffix}"
@@ -162,7 +205,11 @@ def report_item():
         if errors:
             for error in errors:
                 flash(error, "error")
-            return render_template("report.html", form=request.form, today=date.today().isoformat())
+            return render_template(
+                "report.html",
+                form=request.form,
+                today=date.today().isoformat()
+            )
 
         if image_filename:
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -170,19 +217,26 @@ def report_item():
 
         with get_db() as conn:
             cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
+                INSERT INTO items (
+                    title, category, item_status, description, location,
+                    item_date, contact_name, contact_email, image_filename
+                )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
+            """, (
+                title, category, item_status, description, location,
+                item_date, contact_name, contact_email, image_filename
+            ))
             item_id = cursor.lastrowid
+
         flash("Your item has been reported successfully.", "success")
         return redirect(url_for("item_detail", item_id=item_id))
 
-    return render_template("report.html", form={}, today=date.today().isoformat())
+    return render_template(
+        "report.html",
+        form={},
+        today=date.today().isoformat()
+    )
 
-
-@app.route("/item/<int:item_id>/returned", methods=["POST"])
 def mark_returned(item_id):
     with get_db() as conn:
         item = conn.execute("SELECT id, item_status FROM items WHERE id = ?", (item_id,)).fetchone()
