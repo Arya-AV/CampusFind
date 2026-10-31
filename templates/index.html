@@ -24,6 +24,33 @@
   <div class="stat-card"><span class="stat-icon stat-purple">♥</span><div><strong>{{ counts.returned }}</strong><span>Reunited</span></div></div>
 </section>
 
+{% if recent_items %}
+<section class="recently-viewed-section">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">YOUR ACTIVITY</span>
+      <h2>Recently viewed</h2>
+      <p>Pick up where you left off.</p>
+    </div>
+  </div>
+
+  <div class="recently-viewed-list">
+    {% for item in recent_items %}
+    <a class="recent-item"
+       href="{{ url_for('item_detail', item_id=item.id) }}">
+      <div>
+        <strong>{{ item.title }}</strong>
+        <span>{{ item.category }} · {{ item.item_date }}</span>
+      </div>
+      <span class="status-pill status-{{ item.item_status|lower }}">
+        {{ item.item_status }}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="listings-section">
   <div class="section-heading">
     <div><span class="eyebrow">COMMUNITY BOARD</span><h2>Explore listings <span class="heading-count">{{ items|length }}</span></h2><p>Every listing is a chance to reunite someone with what they lost.</p></div>

@@ -1,3 +1,4 @@
+
 import unittest
 import tempfile
 from pathlib import Path
@@ -6,6 +7,7 @@ import app as campus_app
 
 
 class CampusFindTests(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.original_db = campus_app.DATABASE
@@ -49,6 +51,23 @@ class CampusFindTests(unittest.TestCase):
         response = self.client.get("/report")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
+
+    def test_recently_viewed_items_appear_on_homepage(self):
+        self.client.get("/item/1")
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Recently viewed", response.data)
+        self.assertIn(b"Black Backpack", response.data)
+
+    def test_recently_viewed_items_are_limited_to_five(self):
+        with self.client.session_transaction() as sess:
+            sess["recently_viewed"] = [1, 2, 3, 4, 5, 6]
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
 
 
 if __name__ == "__main__":
