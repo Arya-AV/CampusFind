@@ -70,6 +70,17 @@ def init_db():
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# New Check: Verify the actual file bytes to prevent malicious uploads
+def validate_image_content(stream):
+    header = stream.read(512)
+    stream.seek(0)
+    if not header:
+        return False
+    if header.startswith(b'\x89PNG\r\n\x1a\n'): return True
+    if header.startswith(b'\xff\xd8'): return True
+    if header.startswith(b'GIF87a') or header.startswith(b'GIF89a'): return True
+    if header.startswith(b'RIFF') and b'WEBP' in header[8:16]: return True
+    return False
 
 @app.context_processor
 def inject_globals():
@@ -155,6 +166,8 @@ def report_item():
         if image and image.filename:
             if not allowed_file(image.filename):
                 errors.append("Image must be PNG, JPG, JPEG, GIF, or WEBP.")
+            elif not validate_image_content(image.stream):
+                errors.append("The uploaded file does not contain valid image data. Please upload a real image.")
             else:
                 suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower()
                 image_filename = f"{uuid.uuid4().hex}.{suffix}"
