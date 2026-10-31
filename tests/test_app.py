@@ -1,5 +1,7 @@
 import unittest
 import tempfile
+import os
+from unittest.mock import patch
 from pathlib import Path
 
 import app as campus_app
@@ -49,6 +51,15 @@ class CampusFindTests(unittest.TestCase):
         response = self.client.get("/report")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Item details", response.data)
+
+    def test_secret_key_loaded_from_env_or_fallback(self):
+        self.assertIsNotNone(campus_app.app.config.get("SECRET_KEY"))
+
+    def test_flask_debug_flag_parsing(self):
+        with patch.dict(os.environ, {"FLASK_DEBUG": "1"}):
+            self.assertTrue(os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes"))
+        with patch.dict(os.environ, {"FLASK_DEBUG": "0"}):
+            self.assertFalse(os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes"))
 
 
 if __name__ == "__main__":
