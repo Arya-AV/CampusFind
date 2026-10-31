@@ -41,6 +41,13 @@ class CampusFindTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Black Backpack", response.data)
 
+    def test_item_detail_has_copy_email_button(self):
+        response = self.client.get("/item/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"copy-email-btn", response.data)
+        self.assertIn(b'data-email="riya@example.com"', response.data)
+        self.assertIn(b">Copy</button>", response.data)
+
     def test_missing_item_returns_404(self):
         response = self.client.get("/item/99999")
         self.assertEqual(response.status_code, 404)
