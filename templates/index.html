@@ -26,7 +26,7 @@
 
 <section class="listings-section">
   <div class="section-heading">
-    <div><span class="eyebrow">COMMUNITY BOARD</span><h2>Explore listings <span class="heading-count">{{ items|length }}</span></h2><p>Every listing is a chance to reunite someone with what they lost.</p></div>
+    <div><span class="eyebrow">COMMUNITY BOARD</span><h2>Explore listings <span class="heading-count">{{ total_items }}</span></h2><p>Every listing is a chance to reunite someone with what they lost.</p></div>
   </div>
   <form class="filter-panel" method="get" action="{{ url_for('index') }}">
     <label class="search-box"><span>⌕</span><input type="search" name="q" value="{{ q }}" placeholder="Search items, places, descriptions..." aria-label="Search listings"></label>
@@ -61,6 +61,21 @@
   </div>
   {% else %}
   <div class="empty-state"><div class="empty-icon">⌕</div><h3>No listings found</h3><p>Try another search or clear your filters to see all campus listings.</p><a class="button button-primary" href="{{ url_for('index') }}">View all listings</a></div>
+  {% endif %}
+  {% if total_pages > 1 %}
+  <nav class="pagination" aria-label="Listing pages">
+    {% if page > 1 %}
+      <a class="page-control" rel="prev" href="{{ url_for('index', q=q or none, category=selected_category or none, status=selected_status or none, sort=sort, page=page - 1) }}">← Previous</a>
+    {% else %}
+      <span class="page-control page-disabled" aria-disabled="true">← Previous</span>
+    {% endif %}
+    <span class="page-summary" aria-current="page">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a class="page-control" rel="next" href="{{ url_for('index', q=q or none, category=selected_category or none, status=selected_status or none, sort=sort, page=page + 1) }}">Next →</a>
+    {% else %}
+      <span class="page-control page-disabled" aria-disabled="true">Next →</span>
+    {% endif %}
+  </nav>
   {% endif %}
 </section>
 {% endblock %}
