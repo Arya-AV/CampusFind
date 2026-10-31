@@ -188,11 +188,16 @@ def mark_returned(item_id):
         item = conn.execute("SELECT id, item_status FROM items WHERE id = ?", (item_id,)).fetchone()
         if item is None:
             abort(404)
+            
+        # New check: Prevent Lost items from being marked as returned
+        if item["item_status"] == "Lost":
+            flash("Error: A lost item must be updated to 'Found' before it can be marked as returned.", "error")
+            return redirect(url_for("item_detail", item_id=item_id))
+
         if item["item_status"] != "Returned":
             conn.execute("UPDATE items SET item_status='Returned' WHERE id=?", (item_id,))
     flash("Item marked as returned. Great news!", "success")
     return redirect(url_for("item_detail", item_id=item_id))
-
 
 @app.errorhandler(404)
 def not_found(_error):
