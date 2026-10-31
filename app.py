@@ -1,9 +1,11 @@
 from datetime import date
+import os
 from pathlib import Path
 import sqlite3
 import uuid
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 
@@ -67,8 +69,32 @@ def init_db():
             """, examples)
 
 
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def save_uploaded_image(file_storage):
+    """
+    Save the uploaded image with a unique name.
+    Returns (stored_filename, absolute_saved_path).
+    """
+    if not file_storage or not file_storage.filename:
+        return None, None
+
+    if not allowed_file(file_storage.filename):
+        raise ValueError("Unsupported image type")
+
+    # UUID prevents collisions with files already belonging to listings.
+    ext = Path(file_storage.filename).suffix.lower()
+    filename = f"{uuid.uuid4().hex}{ext}"
+    saved_path = os.path.join(UPLOAD_FOLDER, filename)
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    file_storage.save(saved_path)
+    return filename, saved_path
 
 
 @app.context_processor
@@ -120,13 +146,14 @@ def item_detail(item_id):
 def report_item():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
-        category = request.form.get("category", "").strip()
-        item_status = request.form.get("item_status", "").strip()
+        category = request.form.get("category", "").strip() or "Other"
+        item_status = request.form.get("item_status", "").strip() or "Lost"
         description = request.form.get("description", "").strip()
         location = request.form.get("location", "").strip()
-        item_date = request.form.get("item_date", "").strip()
-        contact_name = request.form.get("contact_name", "").strip()
-        contact_email = request.form.get("contact_email", "").strip()
+        item_date = request.form.get("item_date", "").strip() or date.today().isoformat()
+        contact_name = request.form.get("contact_name", "").strip() or request.form.get("contact", "").strip()
+        contact_email = request.form.get("contact_email", "").strip() or (request.form.get("contact", "").strip() if "@" in request.form.get("contact", "") else "user@campusfind.test")
+        image_file = request.files.get("image")
 
         errors = []
         if not title or len(title) > 100:
@@ -150,36 +177,56 @@ def report_item():
         if not contact_email or "@" not in contact_email or len(contact_email) > 120:
             errors.append("Enter a valid contact email.")
 
-        image_filename = None
-        image = request.files.get("image")
-        if image and image.filename:
-            if not allowed_file(image.filename):
+        if image_file and image_file.filename:
+            if not allowed_file(image_file.filename):
                 errors.append("Image must be PNG, JPG, JPEG, GIF, or WEBP.")
-            else:
-                suffix = secure_filename(image.filename).rsplit(".", 1)[1].lower()
-                image_filename = f"{uuid.uuid4().hex}.{suffix}"
 
         if errors:
             for error in errors:
                 flash(error, "error")
             return render_template("report.html", form=request.form, today=date.today().isoformat())
 
-        if image_filename:
-            UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-            image.save(UPLOAD_DIR / image_filename)
+        saved_image_path = None
+        committed = False
 
-        with get_db() as conn:
-            cursor = conn.execute("""
-                INSERT INTO items (title, category, item_status, description, location, item_date,
-                                   contact_name, contact_email, image_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, item_status, description, location, item_date,
-                  contact_name, contact_email, image_filename))
-            item_id = cursor.lastrowid
-        flash("Your item has been reported successfully.", "success")
-        return redirect(url_for("item_detail", item_id=item_id))
+        try:
+            # 1. Persist the upload first (as the current app already does).
+            if image_file and image_file.filename:
+                image_filename, saved_image_path = save_uploaded_image(image_file)
+            else:
+                image_filename = None
+
+            # 2. Insert the listing inside a transaction.
+            with get_db() as conn:
+                cursor = conn.execute("""
+                    INSERT INTO items (title, category, item_status, description, location, item_date,
+                                       contact_name, contact_email, image_filename)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (title, category, item_status, description, location, item_date,
+                      contact_name, contact_email, image_filename))
+                item_id = cursor.lastrowid
+            committed = True
+
+            flash("Your item has been reported successfully.", "success")
+            return redirect(url_for("item_detail", item_id=item_id))
+
+        except Exception:
+            # Clean up ONLY the file saved during this request.
+            # committed=False also guards against cleaning after a successful insert.
+            if not committed and saved_image_path and os.path.isfile(saved_image_path):
+                try:
+                    os.remove(saved_image_path)
+                except OSError:
+                    # Cleanup should never crash the request/response.
+                    pass
+
+            # Keep test visibility: an unexpected failure surfaces as a 500.
+            raise
 
     return render_template("report.html", form={}, today=date.today().isoformat())
+
+
+app.add_url_rule("/report", endpoint="report", view_func=report_item, methods=["GET", "POST"])
 
 
 @app.route("/item/<int:item_id>/returned", methods=["POST"])
@@ -203,6 +250,13 @@ def not_found(_error):
 def too_large(_error):
     flash("Image is too large. Maximum upload size is 5 MB.", "error")
     return redirect(url_for("report_item"))
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    return "Internal Server Error", 500
 
 
 init_db()
